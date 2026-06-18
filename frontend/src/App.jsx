@@ -18,6 +18,7 @@ import MapView from './pages/MapView';
 import SmsPanel from './pages/SmsPanel';
 import Store from './pages/Store';
 import UpcycleHub from './pages/UpcycleHub';
+import AiConfidencePanel from './pages/AiConfidencePanel';
 import Layout from './components/layout/Layout';
 
 // Protected route wrapper — redirects to /login if not authenticated
@@ -73,6 +74,7 @@ const AppWithSocket = () => (
         {/* Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/sms" element={<ProtectedRoute allowedRoles={['ADMIN']}><SmsPanel /></ProtectedRoute>} />
+        <Route path="/admin/ai-confidence" element={<ProtectedRoute allowedRoles={['ADMIN']}><AiConfidencePanel /></ProtectedRoute>} />
 
         {/* Collector Routes */}
         <Route path="/collector" element={<ProtectedRoute allowedRoles={['COLLECTOR']}><CollectorDashboard /></ProtectedRoute>} />

@@ -8,6 +8,7 @@ const adminNav = [
   { to: '/admin', icon: '📊', labelKey: 'nav_dashboard', end: true },
   { to: '/map', icon: '🗺️', labelKey: 'nav_map' },
   { to: '/admin/sms', icon: '📱', labelKey: 'nav_sms' },
+  { to: '/admin/ai-confidence', icon: '🧠', labelKey: 'AI Confidence' },
 ];
 
 const citizenNav = [

@@ -5,7 +5,7 @@
 
 const cron = require('node-cron');
 const { PrismaClient } = require('@prisma/client');
-const { generateAdminInsight } = require('../services/gemini.service');
+const { generateAdminInsight, generateEscalationDraft } = require('../services/gemini.service');
 
 const prisma = new PrismaClient();
 
@@ -45,6 +45,24 @@ const runWeeklyInsight = async () => {
     });
 
     console.log('[CRON] AI insight cached successfully:', insight.weeklyTrend);
+
+    // Agentic Step 2: Auto-Draft Escalation
+    if (insight.weeklyTrend === 'worsening' && insight.urgentCount > 0) {
+      console.log('[CRON] Agentic action triggered: Worsening trend detected. Drafting escalation...');
+      const criticalComplaints = await prisma.complaint.findMany({
+        where: { createdAt: { gte: sevenDaysAgo }, priority: 'CRITICAL', status: { in: ['NEW', 'IN_PROGRESS'] } },
+        take: 20
+      });
+      const draft = await generateEscalationDraft(criticalComplaints, insight);
+      if (draft) {
+        await prisma.settings.upsert({
+          where: { key: 'ai_escalation_draft' },
+          update: { value: draft },
+          create: { key: 'ai_escalation_draft', value: draft },
+        });
+        console.log('[CRON] Escalation draft cached successfully.');
+      }
+    }
   } catch (err) {
     console.error('[CRON] Weekly insight error:', err.message);
   }

@@ -8,6 +8,9 @@ import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { timeAgo, getStatusClass, getPriorityClass, getCategoryClass, formatConfidence, formatDateTime } from '../utils/format';
 import { CITIES } from '../utils/constants';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#a855f7', '#ef4444'];
 
 const STATUSES = ['NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'DUPLICATE'];
 
@@ -124,6 +127,60 @@ export default function AdminDashboard() {
                 <div className="stat-label">{s.label}</div>
               </div>
             ))}
+          </div>
+
+          {/* Charts Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: 24, marginBottom: 24 }}>
+            {/* Severity Pie Chart */}
+            <div className="card">
+              <h3 className="card-title">Severity Distribution</h3>
+              <div style={{ height: 200 }}>
+                {stats?.severityData && stats.severityData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={stats.severityData} cx="50%" cy="50%" innerRadius={40} outerRadius={80} dataKey="value" paddingAngle={5}>
+                        {stats.severityData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                      </Pie>
+                      <RechartsTooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : <p style={{ textAlign: 'center', marginTop: 80, color: '#aaa', fontSize: 12 }}>No data</p>}
+              </div>
+            </div>
+
+            {/* Category Bar Chart */}
+            <div className="card">
+              <h3 className="card-title">Top Categories</h3>
+              <div style={{ height: 200 }}>
+                {stats?.categoryData && stats.categoryData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.categoryData} layout="vertical" margin={{ left: 20 }}>
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 11 }} />
+                      <RechartsTooltip />
+                      <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : <p style={{ textAlign: 'center', marginTop: 80, color: '#aaa', fontSize: 12 }}>No data</p>}
+              </div>
+            </div>
+
+            {/* Trend Line Chart */}
+            <div className="card">
+              <h3 className="card-title">7-Day Trend</h3>
+              <div style={{ height: 200 }}>
+                {stats?.trendData && stats.trendData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={stats.trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <RechartsTooltip />
+                      <Line type="monotone" dataKey="complaints" stroke="#16a34a" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : <p style={{ textAlign: 'center', marginTop: 80, color: '#aaa', fontSize: 12 }}>No data</p>}
+              </div>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, marginBottom: 24 }}>

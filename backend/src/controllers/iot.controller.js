@@ -1,6 +1,8 @@
 // GreenGuard — IoT Bins Controller
 const { PrismaClient } = require('@prisma/client');
 const { sendSuccess, sendError } = require('../utils/response.utils');
+const socketService = require('../services/socket.service');
+const { generateBinAlert } = require('../services/gemini.service');
 
 const prisma = new PrismaClient();
 
@@ -25,8 +27,18 @@ const updateBinFillLevel = async (req, res) => {
     
     const bin = await prisma.smartBin.update({
       where: { id },
-      data: { fillLevel: parseFloat(fillLevel), lastUpdated: new Date() }
+      data: { fillLevel: parseFloat(fillLevel), lastSensorUpdate: new Date() }
     });
+
+    if (parseFloat(fillLevel) >= 95) {
+      const alertMsg = await generateBinAlert(bin.location, fillLevel);
+      if (socketService.getIO()) {
+        socketService.getIO().emit('critical_alert', {
+          complaintId: `BIN-${id.slice(-6)}`,
+          category: `Overflow Alert: ${alertMsg}`
+        });
+      }
+    }
 
     return sendSuccess(res, 200, 'Bin updated', { bin });
   } catch (err) {

@@ -195,7 +195,31 @@ const me = async (req, res) => {
       return sendError(res, 404, 'User not found');
     }
 
-    return sendSuccess(res, 200, 'Profile retrieved', { user });
+    // Agentic Personalization Engine: Track habits for Eco Tips
+    let ecoTips = [];
+    if (user.role === 'CITIZEN') {
+      const recentComplaints = await prisma.complaint.findMany({
+        where: { userId: user.id },
+        select: { aiCategory: true },
+        take: 10
+      });
+      
+      const categories = recentComplaints.map(c => c.aiCategory).filter(Boolean);
+      if (categories.includes('plastic_waste')) {
+        ecoTips.push("You often report plastic waste. Consider carrying a reusable bag to reduce single-use plastics.");
+      }
+      if (categories.includes('organic_waste') || categories.includes('food_waste')) {
+        ecoTips.push("Noticed food waste reports? Try starting a small home compost bin!");
+      }
+      if (categories.includes('illegal_dumping')) {
+        ecoTips.push("Thank you for tracking illegal dumping. Keep an eye out for our upcoming neighborhood clean-up drive.");
+      }
+      if (ecoTips.length === 0) {
+        ecoTips.push("Tip: Segregating waste at home makes a huge difference. Keep up the good work!");
+      }
+    }
+
+    return sendSuccess(res, 200, 'Profile retrieved', { user, ecoTips });
   } catch (err) {
     console.error('[AUTH] me error:', err);
     return sendError(res, 500, 'Failed to retrieve profile');

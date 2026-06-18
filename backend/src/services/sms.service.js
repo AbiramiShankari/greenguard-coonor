@@ -175,7 +175,7 @@ const smsEvents = {
     `GreenGuard🔄 Complaint #${id.slice(-6).toUpperCase()} is IN PROGRESS. Team is on it. -Sanitation Dept`,
 
   complaint_resolved: ({ id, points }) =>
-    `GreenGuard🎉 Complaint #${id.slice(-6).toUpperCase()} RESOLVED! +5pts earned. Total: ${points}pts. Thank you!`,
+    `GreenGuard🎉 Complaint #${id.slice(-6).toUpperCase()} RESOLVED! +5pts. Total: ${points}pts. View before/after collage: https://gg.tn/c/${id.slice(-6)}`,
 
   complaint_duplicate: ({ id, duplicateOf }) =>
     `GreenGuard🔁 Linked to existing report #${(duplicateOf || '').slice(-6).toUpperCase()}. One fix, double impact!`,

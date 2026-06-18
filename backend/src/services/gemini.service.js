@@ -262,4 +262,59 @@ Return ONLY valid JSON, no markdown:
   }
 };
 
-module.exports = { categoriseComplaint, detectDuplicate, generateAdminInsight };
+// ─── Function 4: Generate Escalation Draft ───────────────────────────────────
+
+/**
+ * Generate a formal escalation memo for worsening trends.
+ * @param {Array} complaints - List of critical/unresolved complaints
+ * @param {Object} insight - Weekly insight data
+ */
+const generateEscalationDraft = async (complaints, insight) => {
+  const startTime = Date.now();
+  try {
+    const aiModel = getModel();
+    if (!aiModel || complaints.length === 0) return null;
+
+    const complaintSummary = complaints.map(c => `- Ward: ${c.ward}, Category: ${c.aiCategory}, Priority: ${c.priority}, Location: ${c.location}`).join('\n');
+    const inputText = `Generating escalation memo for ${complaints.length} complaints based on worsening trend in ${insight.hotspot}.`;
+
+    const prompt = `You are an AI Civic Agent drafting an official escalation memo to the Municipal Health Officer (MHO) regarding a worsening waste management crisis.
+
+Insight Data:
+- Top Issue: ${insight.topIssue}
+- Hotspot: ${insight.hotspot}
+- Unresolved Critical Count: ${complaints.length}
+
+Recent Critical Complaints:
+${complaintSummary}
+
+Write a concise, professional, and urgent 3-paragraph memo. Include a subject line. Do not use Markdown JSON, just return plain text.`;
+
+    const result = await aiModel.generateContent(prompt);
+    const draftText = result.response.text().trim();
+
+    await logAICall({ complaintId: null, fn: 'generateEscalationDraft', inputText, outputJson: null, success: true, durationMs: Date.now() - startTime });
+    return draftText;
+  } catch (err) {
+    console.error('[AI] generateEscalationDraft error:', err.message);
+    return null;
+  }
+};
+
+// ─── Function 5: Generate Smart Bin Alert ────────────────────────────────────
+
+const generateBinAlert = async (location, fillLevel) => {
+  try {
+    const aiModel = getModel();
+    if (!aiModel) return `Smart Bin at ${location} has reached ${fillLevel}% capacity. Immediate pickup required.`;
+
+    const prompt = `A smart garbage bin at "${location}" has just hit ${fillLevel}% capacity. Write a very brief (1 sentence), urgent, and professional alert message to the municipal admin to dispatch a truck immediately. Do not use markdown JSON.`;
+    const result = await aiModel.generateContent(prompt);
+    return result.response.text().trim();
+  } catch (err) {
+    console.error('[AI] generateBinAlert error:', err.message);
+    return `Smart Bin at ${location} has reached ${fillLevel}% capacity. Immediate pickup required.`;
+  }
+};
+
+module.exports = { categoriseComplaint, detectDuplicate, generateAdminInsight, generateEscalationDraft, generateBinAlert };

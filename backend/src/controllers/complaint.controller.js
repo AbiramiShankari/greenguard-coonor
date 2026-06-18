@@ -4,6 +4,7 @@
 
 const { PrismaClient } = require('@prisma/client');
 const { validationResult } = require('express-validator');
+const crypto = require('crypto');
 const { sendSuccess, sendError } = require('../utils/response.utils');
 const { uploadImage } = require('../services/cloudinary.service');
 const { categoriseComplaint, detectDuplicate } = require('../services/gemini.service');
@@ -41,9 +42,9 @@ const createComplaint = async (req, res) => {
       return sendError(res, 500, 'Image upload failed. Please try again.');
     }
     
-    // Simulate AI Image Analysis for duplicate detection (e.g., perceptual hash)
-    // In a real app, this would use an AI model or phash library.
-    imageHash = `hash-${req.file.buffer.length}-${Date.now()}`;
+    // Real AI/Crypto Image Analysis for duplicate detection (perceptual/crypto hash)
+    // We use SHA-256 for exact duplicate detection of image bytes
+    imageHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
 
     // Step 2: AI categorisation (never blocks — fallback on failure)
     // Pass both the imageUrl and the raw file buffer to Gemini for multi-modal processing
@@ -103,6 +104,36 @@ const createComplaint = async (req, res) => {
       },
       include: { user: { select: { name: true, phone: true, totalPoints: true } } },
     });
+
+    // Step 5b: Algorithmic Auto-Dispatch
+    if (!isDuplicate) {
+      try {
+        const availableCollectors = await prisma.user.findMany({
+          where: { role: 'COLLECTOR', city }
+        });
+        if (availableCollectors.length > 0) {
+          const workloads = await Promise.all(availableCollectors.map(async (c) => {
+            const count = await prisma.complaint.count({
+              where: { collectorId: c.id, status: { in: ['NEW', 'IN_PROGRESS'] } }
+            });
+            return { ...c, activeCount: count };
+          }));
+          workloads.sort((a, b) => a.activeCount - b.activeCount);
+          const bestCollector = workloads[0];
+          
+          await prisma.complaint.update({
+            where: { id: complaint.id },
+            data: { collectorId: bestCollector.id },
+          });
+          complaint.collectorId = bestCollector.id;
+          
+          // Send SMS to collector
+          sendEventSMS('admin_assign_task', { id: complaint.id, taskType: 'Complaint', location: complaint.location }, bestCollector.phone, bestCollector.id, false);
+        }
+      } catch (err) {
+        console.error('[COMPLAINT] Auto-dispatch error:', err);
+      }
+    }
 
     // Step 6: Award points (skip for duplicates)
     let pointsResult = { awarded: false };

@@ -141,6 +141,21 @@ export default function Dashboard() {
             </Link>
           </div>
 
+          {/* Eco Tips (Personalization Engine) */}
+          {user.ecoTips && user.ecoTips.length > 0 && (
+            <div style={{ marginBottom: 28, padding: '16px 20px', background: 'var(--color-primary-50)', border: '1px solid var(--color-primary-200)', borderRadius: 'var(--radius-lg)', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+              <div style={{ fontSize: 24 }}>💡</div>
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary-dark)', marginBottom: 4 }}>AI Eco Insights</h3>
+                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'var(--color-gray-700)', lineHeight: 1.5 }}>
+                  {user.ecoTips.map((tip, idx) => (
+                    <li key={idx}>{tip}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
             <div>
               {/* My Complaints */}

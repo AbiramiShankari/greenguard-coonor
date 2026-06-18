@@ -23,13 +23,28 @@ const getDashboardStats = async (req, res) => {
       criticalOpen,
       activeUsersThisWeek,
       smsSentToday,
+      categoryData,
+      severityData
     ] = await Promise.all([
       prisma.complaint.count({ where: { createdAt: { gte: todayStart } } }),
       prisma.complaint.count({ where: { status: 'RESOLVED', updatedAt: { gte: todayStart } } }),
       prisma.complaint.count({ where: { priority: 'CRITICAL', status: { in: ['NEW', 'IN_PROGRESS'] } } }),
       prisma.user.count({ where: { updatedAt: { gte: weekStart } } }),
       prisma.sMSLog.count({ where: { status: 'SENT', createdAt: { gte: todayStart } } }),
+      prisma.complaint.groupBy({ by: ['aiCategory'], _count: { aiCategory: true }, where: { aiCategory: { not: null } } }),
+      prisma.complaint.groupBy({ by: ['priority'], _count: { priority: true } })
     ]);
+
+    // Trend data for last 7 days
+    const trendData = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const start = new Date(d.setHours(0,0,0,0));
+      const end = new Date(d.setHours(23,59,59,999));
+      const count = await prisma.complaint.count({ where: { createdAt: { gte: start, lte: end } } });
+      trendData.push({ name: start.toLocaleDateString('en-US', { weekday: 'short' }), complaints: count });
+    }
 
     return sendSuccess(res, 200, 'Stats retrieved', {
       totalComplaintsToday,
@@ -37,6 +52,9 @@ const getDashboardStats = async (req, res) => {
       criticalOpen,
       activeUsersThisWeek,
       smsSentToday,
+      categoryData: categoryData.map(c => ({ name: c.aiCategory || 'Uncategorized', value: c._count.aiCategory })),
+      severityData: severityData.map(s => ({ name: s.priority, value: s._count.priority })),
+      trendData
     });
   } catch (err) {
     console.error('[ADMIN] getDashboardStats error:', err);

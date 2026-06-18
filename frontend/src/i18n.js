@@ -17,7 +17,25 @@ const resources = {
       "toggle_lang": "தமிழ்",
       "points": "pts",
       "report_complaint": "Report Issue",
-      "request_pickup": "Request Pickup"
+      "request_pickup": "Request Pickup",
+      "status": "Status",
+      "priority": "Priority",
+      "NEW": "New",
+      "IN_PROGRESS": "In Progress",
+      "RESOLVED": "Resolved",
+      "CLOSED": "Closed",
+      "DUPLICATE": "Duplicate",
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "CRITICAL": "Critical",
+      "submit": "Submit",
+      "cancel": "Cancel",
+      "description": "Description",
+      "location": "Location",
+      "city": "City",
+      "recent_activity": "Recent Activity",
+      "your_impact": "Your Impact"
     }
   },
   ta: {
@@ -34,7 +52,25 @@ const resources = {
       "toggle_lang": "English",
       "points": "புள்ளிகள்",
       "report_complaint": "புகார் அளி",
-      "request_pickup": "எடுக்கக் கோரு"
+      "request_pickup": "எடுக்கக் கோரு",
+      "status": "நிலை",
+      "priority": "முன்னுரிமை",
+      "NEW": "புதிய",
+      "IN_PROGRESS": "செயல்பாட்டில்",
+      "RESOLVED": "தீர்க்கப்பட்டது",
+      "CLOSED": "மூடப்பட்டது",
+      "DUPLICATE": "நகல்",
+      "LOW": "குறைந்த",
+      "MEDIUM": "நடுத்தர",
+      "HIGH": "அதிக",
+      "CRITICAL": "அவசர",
+      "submit": "சமர்ப்பி",
+      "cancel": "ரத்துசெய்",
+      "description": "விளக்கம்",
+      "location": "இடம்",
+      "city": "நகரம்",
+      "recent_activity": "சமீபத்திய செயல்பாடுகள்",
+      "your_impact": "உங்கள் தாக்கம்"
     }
   }
 };

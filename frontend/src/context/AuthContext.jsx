@@ -15,7 +15,13 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
       api.get('/auth/me')
-        .then(res => setUser(res.data.data.user))
+        .then(res => {
+          const fetchedUser = res.data.data.user;
+          if (res.data.data.ecoTips) {
+            fetchedUser.ecoTips = res.data.data.ecoTips;
+          }
+          setUser(fetchedUser);
+        })
         .catch(() => localStorage.removeItem('accessToken'))
         .finally(() => setLoading(false));
     } else {
