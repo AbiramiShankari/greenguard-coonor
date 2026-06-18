@@ -1,0 +1,278 @@
+// GreenGuard — Admin Dashboard
+// Stats cards, AI insight, live complaint feed, complaint management table
+
+import { useState, useEffect } from 'react';
+import { useSocket } from '../context/SocketContext';
+import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
+import toast from 'react-hot-toast';
+import { timeAgo, getStatusClass, getPriorityClass, getCategoryClass, formatConfidence, formatDateTime } from '../utils/format';
+import { CITIES } from '../utils/constants';
+
+const STATUSES = ['NEW', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'DUPLICATE'];
+
+export default function AdminDashboard() {
+  const { user } = useAuth();
+  const { socket } = useSocket();
+  const [stats, setStats] = useState(null);
+  const [insight, setInsight] = useState(null);
+  const [complaints, setComplaints] = useState([]);
+  const [liveFeed, setLiveFeed] = useState([]);
+  const [filters, setFilters] = useState({ status: '', city: '', priority: '' });
+  const [loading, setLoading] = useState(true);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [collectors, setCollectors] = useState([]);
+
+  const fetchData = async () => {
+    try {
+      const [statsRes, insightRes, cRes, colRes] = await Promise.all([
+        api.get('/admin/stats'),
+        api.get('/admin/ai-insight'),
+        api.get('/complaints?' + new URLSearchParams(filters).toString() + '&limit=50'),
+        api.get('/admin/collectors')
+      ]);
+      setStats(statsRes.data.data);
+      setInsight(insightRes.data.data.insight);
+      setComplaints(cRes.data.data.complaints);
+      setCollectors(colRes.data.data.collectors);
+    } catch {
+      toast.error('Failed to load admin data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, [filters]);
+
+  // Socket.io — live feed
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('new_complaint', (data) => {
+      setLiveFeed(prev => [{ ...data, timestamp: new Date() }, ...prev].slice(0, 10));
+      setComplaints(prev => [{ id: data.complaintId, status: 'NEW', aiCategory: data.category, aiConfidence: data.confidence, priority: data.priority, aiSummary: data.summary, city: data.city, createdAt: new Date() }, ...prev]);
+      toast(`🔔 New complaint in ${data.city}: ${data.category}`, { icon: '🗑️' });
+    });
+    socket.on('critical_alert', (data) => {
+      toast.error(`🚨 CRITICAL complaint #${data.complaintId?.slice(-6)} — ${data.category}`, { duration: 8000 });
+    });
+    return () => { socket?.off('new_complaint'); socket?.off('critical_alert'); };
+  }, [socket]);
+
+  const handleStatusChange = async (complaintId, newStatus) => {
+    try {
+      await api.put(`/complaints/${complaintId}`, { status: newStatus });
+      setComplaints(prev => prev.map(c => c.id === complaintId ? { ...c, status: newStatus } : c));
+      toast.success(`Status updated → ${newStatus}`);
+    } catch { toast.error('Failed to update status'); }
+  };
+
+  const handleAssignTask = async (taskId, collectorId) => {
+    try {
+      await api.post('/admin/assign-task', { taskId, type: 'complaint', collectorId });
+      setComplaints(prev => prev.map(c => c.id === taskId ? { ...c, collectorId, status: 'IN_PROGRESS' } : c));
+      toast.success('Assigned to collector successfully!');
+    } catch { toast.error('Failed to assign task'); }
+  };
+
+  const handleRefreshInsight = async () => {
+    setInsightLoading(true);
+    try {
+      const res = await api.post('/admin/ai-insight/refresh');
+      setInsight(res.data.data.insight);
+      toast.success('AI insight refreshed!');
+    } catch { toast.error('Insight refresh failed'); }
+    setInsightLoading(false);
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await api.get('/admin/export/complaints', { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `greenguard_complaints_${Date.now()}.csv`;
+      a.click();
+    } catch { toast.error('Export failed'); }
+  };
+
+  if (loading) return <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center' }}><div className="spinner" /></div>;
+
+  const trendIcon = insight?.weeklyTrend === 'improving' ? '↑' : insight?.weeklyTrend === 'worsening' ? '↓' : '→';
+  const trendColor = insight?.weeklyTrend === 'improving' ? 'var(--color-primary)' : insight?.weeklyTrend === 'worsening' ? 'var(--color-red)' : 'var(--color-gray-500)';
+
+  return (
+    <>
+      <div className="app-content">
+        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <h2 style={{ margin: 0, color: 'var(--color-gray-900)' }}>Hello, {user?.name || 'Admin'} 👋</h2>
+          <span style={{ fontSize: '14px', background: 'var(--color-primary-100)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+            {user?.greenguardId || user?.id}
+          </span>
+        </div>
+
+        {/* Stat Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
+            {[
+              { label: 'Complaints Today', value: stats?.totalComplaintsToday ?? 0, accent: '#3b82f6' },
+              { label: 'Resolved Today', value: stats?.resolvedToday ?? 0, accent: '#16a34a' },
+              { label: 'Critical Open', value: stats?.criticalOpen ?? 0, accent: '#ef4444' },
+              { label: 'Active Users (7d)', value: stats?.activeUsersThisWeek ?? 0, accent: '#8b5cf6' },
+              { label: 'SMS Sent Today', value: stats?.smsSentToday ?? 0, accent: '#f97316' },
+            ].map(s => (
+              <div key={s.label} className="stat-card" style={{ '--accent-color': s.accent }}>
+                <div className="stat-number">{s.value}</div>
+                <div className="stat-label">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, marginBottom: 24 }}>
+            {/* AI Insight Card */}
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 className="card-title">🤖 AI Weekly Insight</h3>
+                <button className="btn btn-outline btn-sm" onClick={handleRefreshInsight} disabled={insightLoading}>
+                  {insightLoading ? <span className="spinner" /> : '🔄 Refresh'}
+                </button>
+              </div>
+              {insight ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ padding: '12px', background: 'var(--color-gray-50)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-gray-500)' }}>Top Issue</div>
+                    <div style={{ fontWeight: 600, marginTop: 2 }}>{insight.topIssue}</div>
+                  </div>
+                  <div style={{ padding: '12px', background: 'var(--color-gray-50)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-gray-500)' }}>Hotspot</div>
+                    <div style={{ fontWeight: 600, marginTop: 2 }}>{insight.hotspot}</div>
+                  </div>
+                  <div style={{ padding: '12px', background: 'var(--color-gray-50)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-gray-500)' }}>Avg Resolution</div>
+                    <div style={{ fontWeight: 600, marginTop: 2 }}>{insight.avgResolutionTime}</div>
+                  </div>
+                  <div style={{ padding: '12px', background: 'var(--color-gray-50)', borderRadius: 8 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-gray-500)' }}>Weekly Trend</div>
+                    <div style={{ fontWeight: 700, color: trendColor, marginTop: 2 }}>{trendIcon} {insight.weeklyTrend}</div>
+                  </div>
+                  <div style={{ padding: '12px', background: 'var(--color-primary-50)', borderRadius: 8, gridColumn: '1/-1', border: '1px solid var(--color-primary-200)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-primary)', marginBottom: 4 }}>💡 Recommendation</div>
+                    <div style={{ fontSize: 13 }}>{insight.recommendation}</div>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ color: 'var(--color-gray-400)', fontSize: 13 }}>No insight yet — will be generated at midnight or click Refresh.</p>
+              )}
+            </div>
+
+            {/* Live Feed */}
+            <div className="live-feed">
+              <div className="live-feed-header">
+                <span className="live-dot" />
+                Live Feed ({liveFeed.length})
+              </div>
+              {liveFeed.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-gray-400)', fontSize: 12 }}>
+                  Waiting for new complaints...
+                </div>
+              ) : (
+                liveFeed.map((item, i) => (
+                  <div key={i} className="live-feed-item">
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+                      <span className={`badge ${getCategoryClass(item.category)}`}>{item.category}</span>
+                      <span className={`badge ${getPriorityClass(item.priority)}`}>{item.priority}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--color-gray-600)' }}>{item.city} · {timeAgo(item.timestamp)}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Complaint Table */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 className="card-title">Complaint Management</h3>
+              <button className="btn btn-outline btn-sm" onClick={handleExport}>📥 Export CSV</button>
+            </div>
+
+            {/* Filters */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+              {['status', 'city', 'priority'].map(f => (
+                <select key={f} className="form-input" style={{ width: 'auto' }}
+                  value={filters[f]} onChange={e => setFilters(p => ({ ...p, [f]: e.target.value }))}>
+                  <option value="">All {f}s</option>
+                  {f === 'status' && STATUSES.map(s => <option key={s}>{s}</option>)}
+                  {f === 'city' && CITIES.map(c => <option key={c}>{c}</option>)}
+                  {f === 'priority' && ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map(p => <option key={p}>{p}</option>)}
+                </select>
+              ))}
+            </div>
+
+            <div className="table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>City/Ward</th>
+                    <th>AI Category</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Assign Collector</th>
+                    <th>Images (Before / After)</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {complaints.map(c => (
+                    <tr key={c.id}>
+                      <td style={{ fontFamily: 'monospace', fontSize: 11 }}>#{c.id.slice(-6).toUpperCase()}</td>
+                      <td>{c.user?.name || '—'}</td>
+                      <td style={{ fontSize: 12 }}>{c.city}</td>
+                      <td>
+                        <span className={`badge ${getCategoryClass(c.aiCategory)}`}>{c.aiCategory || '—'}</span>
+                        {c.aiConfidence && <span style={{ fontSize: 10, color: 'var(--color-gray-400)', marginLeft: 4 }}>{formatConfidence(c.aiConfidence)}</span>}
+                      </td>
+                      <td><span className={`badge ${getPriorityClass(c.priority)}`}>{c.priority}</span></td>
+                      <td>
+                        <select
+                          className="form-input"
+                          style={{ padding: '4px 8px', fontSize: 12, width: 'auto' }}
+                          value={c.status}
+                          onChange={e => handleStatusChange(c.id, e.target.value)}
+                        >
+                          {STATUSES.map(s => <option key={s}>{s}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          className="form-input"
+                          style={{ padding: '4px 8px', fontSize: 12, width: '130px' }}
+                          value={c.collectorId || ''}
+                          onChange={e => handleAssignTask(c.id, e.target.value)}
+                        >
+                          <option value="">Unassigned</option>
+                          {collectors.map(col => (
+                            <option key={col.id} value={col.id}>
+                              {col.name} ({col.phone})
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={{ display: 'flex', gap: '8px' }}>
+                        {c.imageUrl ? <img src={c.imageUrl} alt="Before" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} title="Before" /> : '—'}
+                        {c.resolvedImageUrl ? <img src={c.resolvedImageUrl} alt="After" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', border: '2px solid var(--color-primary)' }} title="After" /> : null}
+                      </td>
+                      <td style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>{timeAgo(c.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {complaints.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '32px', color: 'var(--color-gray-400)' }}>No complaints found</div>
+              )}
+            </div>
+          </div>
+      </div>
+    </>
+  );
+}

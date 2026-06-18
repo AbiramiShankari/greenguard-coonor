@@ -1,0 +1,47 @@
+{
+  "name": "greenguard-backend",
+  "version": "1.0.0",
+  "description": "GreenGuard — Civic Waste Management API for Tamil Nadu",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node seed.js",
+    "db:migrate": "npx prisma migrate dev --name init",
+    "db:generate": "npx prisma generate",
+    "db:studio": "npx prisma studio",
+    "audit": "npm audit"
+  },
+  "keywords": [
+    "waste-management",
+    "civic",
+    "tamil-nadu",
+    "greenguard"
+  ],
+  "author": "GreenGuard Team",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@google/genai": "^2.8.0",
+    "@google/generative-ai": "^0.24.1",
+    "@prisma/client": "^5.22.0",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.10.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.7",
+    "prisma": "^5.22.0",
+    "socket.io": "^4.8.3",
+    "twilio": "^6.0.2",
+    "uuid": "^14.0.0",
+    "xss-clean": "^0.1.4"
+  }
+}

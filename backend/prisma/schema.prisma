@@ -1,0 +1,315 @@
+// GreenGuard — Prisma Schema
+// Civic Waste Management Platform · Tamil Nadu, India
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url = "file:./dev.db"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+// // enum Role {
+// //   CITIZEN
+// //   ADMIN
+// //   COLLECTOR
+// // }
+
+// // enum ComplaintStatus {
+// //   NEW
+// //   IN_PROGRESS
+// //   RESOLVED
+// //   CLOSED
+// //   DUPLICATE
+// // }
+
+// // enum CollectionStatus {
+// //   PENDING
+// //   ASSIGNED
+// //   PICKED_UP
+// //   COMPLETED
+// //   CANCELLED
+// // }
+
+// // enum Priority {
+// //   LOW
+// //   MEDIUM
+// //   HIGH
+// //   CRITICAL
+// // }
+
+// // enum WasteType {
+// //   RECYCLABLE
+// //   ORGANIC
+// //   HAZARDOUS
+// //   E_WASTE
+// //   MIXED
+// // }
+
+// // enum SMSStatus {
+// //   SENT
+// //   FAILED
+// //   QUEUED
+// // }
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  greenguardId String?  @unique // Optional to avoid migration errors, populated as GG-XXXXXX
+  name         String
+  email        String   @unique
+  phone        String   @unique // +91XXXXXXXXXX format
+  password     String
+  role String     @default("CITIZEN")
+  city         String   // Bedford | Wellington | Bandishola | etc. (Coonoor/Nilgiris areas)
+  smsOptIn     Boolean  @default(true)
+  totalPoints  Int      @default(0)
+  currentBadge String?
+  refreshToken String?
+  otpCode      String?
+  otpExpiry    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  complaints          Complaint[]
+  collections         CollectionRequest[] @relation("CitizenCollections")
+  assignedCollections CollectionRequest[] @relation("CollectorAssigned")
+  assignedComplaints  Complaint[]         @relation("CollectorComplaints")
+  rewards             Reward[]
+  upvotes             Upvote[]
+  statusHistory       StatusHistory[]
+  smsLogs             SMSLog[]
+  redemptions         RedemptionHistory[]
+  donatedItems        UpcycleItem[]       @relation("DonorItems")
+  claimedItems        UpcycleItem[]       @relation("ClaimerItems")
+
+  organizedDrives     LocalDrive[]        @relation("DriveOrganizer")
+  participatedDrives  DriveParticipant[]  @relation("DriveParticipant")
+}
+
+model Complaint {
+  id          String @id @default(uuid())
+  userId      String
+  user        User   @relation(fields: [userId], references: [id])
+  city        String
+  ward        String
+  location    String
+  street      String?
+  description String
+  imageUrl    String
+  imageHash   String? // For AI duplicate detection
+  lat         Float?
+  lng         Float?
+
+  collectorId      String?
+  collector        User?   @relation("CollectorComplaints", fields: [collectorId], references: [id])
+  resolvedImageUrl String?
+
+  // AI-generated fields
+  aiCategory      String? // overflow|illegal_dumping|drainage|litter|dead_animal|construction_waste|other
+  aiConfidence    Float?
+  aiSeverity      String? // low|medium|high|critical
+  aiSeverityScore Float?
+  aiSummary       String?
+
+  priority String        @default("MEDIUM")
+  status String @default("NEW")
+  duplicateOf String? // ID of original complaint if DUPLICATE
+
+  upvoteCount   Int            @default(0)
+  upvotes       Upvote[]
+  statusHistory StatusHistory[]
+  rewards       Reward[]
+  aiLogs        AILog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StatusHistory {
+  id          String          @id @default(uuid())
+  complaintId String
+  complaint   Complaint       @relation(fields: [complaintId], references: [id])
+  changedById String
+  changedBy   User            @relation(fields: [changedById], references: [id])
+  fromStatus String
+  toStatus String
+  note        String?
+  createdAt   DateTime        @default(now())
+}
+
+model Upvote {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  complaintId String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, complaintId]) // 1 upvote per user per complaint
+}
+
+model CollectionRequest {
+  id          String  @id @default(uuid())
+  citizenId   String
+  citizen     User    @relation("CitizenCollections", fields: [citizenId], references: [id])
+  collectorId String?
+  collector   User?   @relation("CollectorAssigned", fields: [collectorId], references: [id])
+
+  wasteType String
+  quantity  Float // in kg
+  address   String
+  street    String?
+  lat       Float?
+  lng       Float?
+  imageUrl  String
+  resolvedImageUrl String?
+  status String @default("PENDING")
+
+  rewards   Reward[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model Reward {
+  id           String             @id @default(uuid())
+  userId       String
+  user         User               @relation(fields: [userId], references: [id])
+  points       Int
+  reason       String // complaint_submitted | complaint_resolved | collection_submitted | collection_completed | badge_earned | drive_participation
+  badge        String? // set when a badge is unlocked
+  complaintId  String?
+  complaint    Complaint?         @relation(fields: [complaintId], references: [id])
+  collectionId String?
+  collection   CollectionRequest? @relation(fields: [collectionId], references: [id])
+  driveId      String?
+  drive        LocalDrive?        @relation(fields: [driveId], references: [id])
+  createdAt    DateTime           @default(now())
+
+  @@unique([userId, complaintId, reason, driveId]) // prevent duplicate awards per event
+}
+
+model SMSLog {
+  id        String    @id @default(uuid())
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id])
+  phone     String
+  event     String // complaint_submitted | badge_earned | ...
+  message   String
+  status String @default("QUEUED")
+  twilioSid String?
+  error     String?
+  createdAt DateTime  @default(now())
+}
+
+model AILog {
+  id          String     @id @default(uuid())
+  complaintId String?
+  complaint   Complaint? @relation(fields: [complaintId], references: [id])
+  function    String // categoriseComplaint | detectDuplicate | generateAdminInsight
+  inputText   String
+  outputJson String?
+  success     Boolean
+  error       String?
+  durationMs  Int?
+  createdAt   DateTime   @default(now())
+}
+
+model Settings {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String // JSON string for complex values
+  updatedAt DateTime @updatedAt
+}
+
+// ─── New Society Betterment Models ──────────────────────────────────────────
+
+model SmartBin {
+  id               String   @id @default(uuid())
+  location         String
+  street           String?
+  ward             String
+  lat              Float?
+  lng              Float?
+  fillLevel        Float    @default(0) // Percentage 0-100
+  status           String   @default("ACTIVE") // ACTIVE, MAINTENANCE
+  lastSensorUpdate DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model RewardItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  pointCost   Int
+  partnerName String
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  redemptions RedemptionHistory[]
+}
+
+model RedemptionHistory {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  rewardItemId String
+  rewardItem   RewardItem @relation(fields: [rewardItemId], references: [id])
+  pointsSpent  Int
+  redeemedAt   DateTime   @default(now())
+}
+
+model UpcycleItem {
+  id          String   @id @default(uuid())
+  donorId     String
+  donor       User     @relation("DonorItems", fields: [donorId], references: [id])
+  claimerId   String?
+  claimer     User?    @relation("ClaimerItems", fields: [claimerId], references: [id])
+  title       String
+  description String
+  imageUrl    String
+  category    String // FURNITURE, ELECTRONICS, CLOTHING, OTHER
+  status      String   @default("AVAILABLE") // AVAILABLE, CLAIMED, COMPLETED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LocalDrive {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  location    String
+  city        String
+  ward        String
+  date        DateTime
+  imageUrl    String?
+  status      String   @default("PLANNED") // PLANNED, ONGOING, COMPLETED
+  
+  organizerId String
+  organizer   User     @relation("DriveOrganizer", fields: [organizerId], references: [id])
+
+  participants DriveParticipant[]
+  rewards      Reward[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DriveParticipant {
+  id        String   @id @default(uuid())
+  driveId   String
+  drive     LocalDrive @relation(fields: [driveId], references: [id])
+  userId    String
+  user      User       @relation("DriveParticipant", fields: [userId], references: [id])
+  status    String     @default("REGISTERED") // REGISTERED, ATTENDED
+  createdAt DateTime   @default(now())
+
+  @@unique([driveId, userId]) // one registration per drive
+}

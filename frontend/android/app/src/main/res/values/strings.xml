@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GreenGuard</string>
+    <string name="title_activity_main">GreenGuard</string>
+    <string name="package_name">com.greenguard.coonoor</string>
+    <string name="custom_url_scheme">com.greenguard.coonoor</string>
+</resources>
