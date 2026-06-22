@@ -3,6 +3,8 @@ try {
   const serverModule = require('../backend/server.js');
   app = serverModule.app;
 } catch (error) {
+  console.error("🚨 VERCEL COLD START CRASH 🚨");
+  console.error(error);
   app = (req, res) => {
     res.status(500).json({
       success: false,
