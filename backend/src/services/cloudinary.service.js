@@ -3,7 +3,7 @@
 // Returns the secure HTTPS URL of the uploaded image
 
 const cloudinary = require('cloudinary').v2;
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 // Configure Cloudinary with env vars (called at startup)
 cloudinary.config({
@@ -27,12 +27,12 @@ const uploadImage = async (buffer, folder = 'greenguard') => {
     process.env.CLOUDINARY_CLOUD_NAME === 'REPLACE_WITH_REAL_VALUE'
   ) {
     console.log('[CLOUDINARY] Not configured — skipping image upload in dev mode, returning mock URL');
-    return { url: 'https://via.placeholder.com/800x600.png?text=Mock+Image', publicId: `mock_${uuidv4()}` };
+    return { url: 'https://via.placeholder.com/800x600.png?text=Mock+Image', publicId: `mock_${crypto.randomUUID()}` };
   }
 
   return new Promise((resolve, reject) => {
     // Use UUID as the public_id to ensure unique, collision-free filenames
-    const publicId = `${folder}/${uuidv4()}`;
+    const publicId = `${folder}/${crypto.randomUUID()}`;
 
     const uploadStream = cloudinary.uploader.upload_stream(
       {
