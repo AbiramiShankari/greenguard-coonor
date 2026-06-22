@@ -3,7 +3,7 @@
 // Files are stored in memory buffer for Cloudinary upload
 
 const multer = require('multer');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const path = require('path');
 const { sendError } = require('../utils/response.utils');
 
