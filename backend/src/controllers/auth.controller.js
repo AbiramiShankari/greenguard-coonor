@@ -83,7 +83,7 @@ const register = async (req, res) => {
   } catch (err) {
     console.error('[AUTH] register error:', err);
     if (err.name === 'PrismaClientInitializationError' || (err.message && err.message.includes("Can't reach database server"))) {
-      return sendError(res, 503, 'Database connection failed. Please try again later.');
+      return sendError(res, 503, 'DB ERROR: ' + String(err.message));
     }
     return sendError(res, 500, 'Registration failed — please try again');
   }
@@ -132,7 +132,7 @@ const login = async (req, res) => {
   } catch (err) {
     console.error('[AUTH] login error:', err);
     if (err.name === 'PrismaClientInitializationError' || (err.message && err.message.includes("Can't reach database server"))) {
-      return sendError(res, 503, 'Database connection failed. Please try again later.');
+      return sendError(res, 503, 'DB ERROR: ' + String(err.message));
     }
     return sendError(res, 500, `Login failed: ${err.message}`, { stack: err.stack });
   }
