@@ -3,13 +3,17 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "postinstall": "npm install --prefix backend && npm install --prefix frontend",
-    "build": "npm run build --prefix frontend",
-    "start": "npm start --prefix backend",
-    "seed": "npm run seed --prefix backend",
-    "dev": "npm run dev --prefix backend & npm run dev --prefix frontend",
-    "test:backend": "npm run test:all --prefix backend"
+    "postinstall": "prisma generate --schema=backend/prisma/schema.prisma",
+    "build": "npm run build --workspace=frontend",
+    "start": "npm start --workspace=backend",
+    "seed": "npm run seed --workspace=backend",
+    "dev": "npm run dev --workspace=backend & npm run dev --workspace=frontend",
+    "test:backend": "npm run test:all --workspace=backend"
   },
   "keywords": [],
   "author": "",
