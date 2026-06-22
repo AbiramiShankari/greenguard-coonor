@@ -125,7 +125,7 @@ app.use((err, req, res, next) => {
   console.error('[SERVER] Unhandled error:', err);
   
   if (err.name === 'PrismaClientInitializationError' || err.message.includes('Can\'t reach database server')) {
-    return res.status(503).json({ success: false, message: 'Database connection failed. Please try again later.' });
+    return res.status(503).json({ success: false, message: 'DB ERROR: ' + err.message + ' | URL: ' + (process.env.DATABASE_URL ? 'Set' : 'Not Set') });
   }
 
   res.status(500).json({ success: false, message: 'Internal server error' });
