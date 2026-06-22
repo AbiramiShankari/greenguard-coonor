@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = "frontend/dist"
+
+[functions]
+  included_files = ["node_modules/.prisma/client/*.so.node", "backend/prisma/schema.prisma", "backend/node_modules/.prisma/client/*.so.node"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
