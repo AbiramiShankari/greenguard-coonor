@@ -38,7 +38,7 @@ const httpServer = http.createServer(app);
 // ─── Socket.io Setup ──────────────────────────────────────────────────────────
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: true,
     credentials: true,
   },
 });
@@ -86,7 +86,7 @@ socketService.init(io);
 // ─── Security Middleware ───────────────────────────────────────────────────────
 app.use(helmet()); // Set security headers (XSS, HSTS, etc.)
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: true,
   credentials: true, // Allow cookies
 }));
 app.use(globalLimiter); // Global rate limit: 100 req/min

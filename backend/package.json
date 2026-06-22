@@ -16,6 +16,7 @@
     "test:edge": "node tests/e2e-edge-cases.js",
     "test:drives": "node tests/test-drives.js",
     "test:new-flow": "node tests/test-new-flow.js",
+    "postinstall": "npx prisma generate",
     "audit": "npm audit"
   },
   "keywords": [
