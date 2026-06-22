@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/greenguard?schema=public
+      JWT_SECRET: test_jwt_secret_test_jwt_secret_test_jwt
+      JWT_REFRESH_SECRET: test_refresh_secret_test_refresh_secret
+      FRONTEND_URL: http://localhost:5173
+      SMS_PROVIDER: mock
+      ADMIN_PHONE: +919000000000
+      GEMINI_API_KEY: test_gemini_key
+      CLOUDINARY_CLOUD_NAME: test_cloud_name
+      CLOUDINARY_API_KEY: test_cloud_key
+      CLOUDINARY_API_SECRET: test_cloud_secret
+      EMAIL_USER: test@example.com
+      EMAIL_PASS: testpassword
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: greenguard
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" \
+          --health-interval 10s \
+          --health-timeout 5s \
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install backend dependencies
+        run: npm install --prefix backend
+
+      - name: Install frontend dependencies
+        run: npm install --prefix frontend
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: backend
+
+      - name: Start backend server
+        run: |
+          cd backend
+          nohup node server.js > backend.log 2>&1 &
+          echo $! > backend.pid
+          for i in {1..20}; do
+            if curl -s http://localhost:3001/health | grep -q 'service'; then
+              echo 'Backend is ready';
+              exit 0;
+            fi
+            sleep 3;
+          done
+          cat backend.log
+          exit 1
+
+      - name: Run backend tests
+        run: npm run test:all
+        working-directory: backend
+
+      - name: Stop backend server
+        if: always()
+        run: |
+          if [ -f backend/backend.pid ]; then
+            kill $(cat backend/backend.pid) || true
+          fi
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend

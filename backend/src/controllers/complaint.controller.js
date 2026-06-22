@@ -28,27 +28,34 @@ const createComplaint = async (req, res) => {
     const lng = req.body.lng ? parseFloat(req.body.lng) : null;
     const userId = req.user.id;
 
-    // Step 1: Upload image to Cloudinary (mandatory)
-    if (!req.file) {
+    // Step 1: Upload main image to Cloudinary (mandatory)
+    const mainImageFile = req.files && req.files['image'] ? req.files['image'][0] : null;
+    if (!mainImageFile) {
       return sendError(res, 400, 'Image upload is mandatory for complaints.');
     }
     
     let imageUrl = null;
     let imageHash = null;
+    let landmarkImageUrl = null;
     
-    const uploadResult = await uploadImage(req.file.buffer, 'complaints');
+    const uploadResult = await uploadImage(mainImageFile.buffer, 'complaints');
     imageUrl = uploadResult?.url || null;
     if (!imageUrl) {
       return sendError(res, 500, 'Image upload failed. Please try again.');
     }
     
+    // Process optional landmark image
+    const landmarkImageFile = req.files && req.files['landmarkImage'] ? req.files['landmarkImage'][0] : null;
+    if (landmarkImageFile) {
+      const landmarkUpload = await uploadImage(landmarkImageFile.buffer, 'landmarks');
+      landmarkImageUrl = landmarkUpload?.url || null;
+    }
+
     // Real AI/Crypto Image Analysis for duplicate detection (perceptual/crypto hash)
-    // We use SHA-256 for exact duplicate detection of image bytes
-    imageHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+    imageHash = crypto.createHash('sha256').update(mainImageFile.buffer).digest('hex');
 
     // Step 2: AI categorisation (never blocks — fallback on failure)
-    // Pass both the imageUrl and the raw file buffer to Gemini for multi-modal processing
-    const aiResult = await categoriseComplaint(description, imageUrl, req.file);
+    const aiResult = await categoriseComplaint(description, imageUrl, mainImageFile);
 
     // Step 3: Fetch recent complaints in same city + ward for duplicate detection
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
@@ -90,6 +97,7 @@ const createComplaint = async (req, res) => {
         location,
         description,
         imageUrl,
+        landmarkImageUrl,
         imageHash,
         lat,
         lng,

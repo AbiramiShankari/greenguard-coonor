@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 export default function Store() {
-  const { user, login } = useAuth(); // login from useAuth allows us to update context if needed
+  const { t } = useTranslation();
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [redeeming, setRedeeming] = useState(false);
@@ -27,7 +29,7 @@ export default function Store() {
       const meRes = await api.get('/auth/me');
       setCurrentPoints(meRes.data.data.user.totalPoints);
     } catch (err) {
-      toast.error('Failed to load store items');
+      toast.error(t('failed_to_load_store'));
     } finally {
       setLoading(false);
     }
@@ -35,7 +37,7 @@ export default function Store() {
 
   const handleRedeemClick = async (itemId, cost) => {
     if (currentPoints < cost) {
-      toast.error('Insufficient points!');
+      toast.error(t('insufficient_points'));
       return;
     }
     setRedeeming(true);
@@ -43,9 +45,9 @@ export default function Store() {
       await api.post('/store/redeem/send-otp');
       setSelectedRewardId(itemId);
       setShowOtpModal(true);
-      toast.success('OTP sent to your phone!');
+      toast.success(t('otp_sent'));
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send OTP');
+      toast.error(err.response?.data?.message || t('failed_to_send_otp'));
     } finally {
       setRedeeming(false);
     }
@@ -53,19 +55,19 @@ export default function Store() {
 
   const confirmRedemption = async () => {
     if (!otpCode || otpCode.length !== 6) {
-      toast.error('Please enter a valid 6-digit OTP');
+      toast.error(t('invalid_otp'));
       return;
     }
     setRedeeming(true);
     try {
       const res = await api.post('/store/redeem', { rewardItemId: selectedRewardId, otp: otpCode });
-      toast.success('🎉 Reward redeemed successfully!');
+      toast.success(t('reward_redeemed_successfully'));
       setCurrentPoints(res.data.data.pointsRemaining);
       setShowOtpModal(false);
       setOtpCode('');
       setSelectedRewardId(null);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to redeem reward');
+      toast.error(err.response?.data?.message || t('failed_to_redeem_reward'));
     } finally {
       setRedeeming(false);
     }
@@ -76,13 +78,13 @@ export default function Store() {
       <div className="app-content">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <div>
-              <h2 style={{ marginBottom: 4 }}>🎁 Rewards Store</h2>
+              <h2 style={{ marginBottom: 4 }}>{t('rewards_store_title')}</h2>
               <p style={{ color: 'var(--color-gray-500)', fontSize: 14 }}>
-                Redeem your GreenGuard points for real-world business discounts and perks!
+                {t('redeem_points_desc')}
               </p>
             </div>
             <div style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary-dark)', padding: '12px 20px', borderRadius: 20, fontWeight: 700, fontSize: 18 }}>
-              {currentPoints} pts
+              {currentPoints} {t('pts')}
             </div>
           </div>
 
@@ -102,14 +104,14 @@ export default function Store() {
                       disabled={redeeming || currentPoints < item.pointCost}
                       onClick={() => handleRedeemClick(item.id, item.pointCost)}
                     >
-                      {currentPoints >= item.pointCost ? `Redeem for ${item.pointCost} pts` : `Need ${item.pointCost - currentPoints} more pts`}
+                      {currentPoints >= item.pointCost ? `${t('redeem_for')} ${item.pointCost} ${t('pts')}` : `${t('need')} ${item.pointCost - currentPoints} ${t('more_pts')}`}
                     </button>
                   </div>
                 </div>
               ))}
               {items.length === 0 && (
                 <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-gray-500)', gridColumn: '1 / -1' }}>
-                  No rewards available at the moment. Check back later!
+                  {t('no_rewards')}
                 </div>
               )}
             </div>
@@ -119,16 +121,16 @@ export default function Store() {
           {showOtpModal && (
             <div className="modal-overlay">
               <div className="modal" style={{ maxWidth: 400 }}>
-                <h3 style={{ marginBottom: 12 }}>Verify Redemption</h3>
+                <h3 style={{ marginBottom: 12 }}>{t('verify_redemption')}</h3>
                 <p style={{ color: 'var(--color-gray-500)', fontSize: 14, marginBottom: 20 }}>
-                  We've sent a 6-digit OTP to your registered phone number. Please enter it below to confirm.
+                  {t('otp_sent_desc')}
                 </p>
                 <div className="form-group">
-                  <label>OTP Code</label>
+                  <label>{t('otp_code')}</label>
                   <input
                     type="text"
                     maxLength={6}
-                    placeholder="Enter 6-digit OTP"
+                    placeholder={t('enter_6_digit_otp')}
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                     className="form-input"
@@ -143,7 +145,7 @@ export default function Store() {
                     }}
                     disabled={redeeming}
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button 
                     className="btn btn-primary btn-full"

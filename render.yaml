@@ -1,0 +1,52 @@
+services:
+  # Backend Node.js Service
+  - type: web
+    name: greenguard-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install && npm run db:generate
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SMS_PROVIDER
+        value: twilio
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+      - key: FRONTEND_URL
+        value: https://greenguard-frontend.onrender.com
+
+  # Frontend Vite App (Static Site)
+  - type: web
+    name: greenguard-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://greenguard-backend.onrender.com/api
+      - key: VITE_SOCKET_URL
+        value: https://greenguard-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -82,6 +82,9 @@ const register = async (req, res) => {
     return sendSuccess(res, 201, 'Account created successfully', { user, accessToken });
   } catch (err) {
     console.error('[AUTH] register error:', err);
+    if (err.name === 'PrismaClientInitializationError' || (err.message && err.message.includes("Can't reach database server"))) {
+      return sendError(res, 503, 'Database connection failed. Please try again later.');
+    }
     return sendError(res, 500, 'Registration failed — please try again');
   }
 };
@@ -128,6 +131,9 @@ const login = async (req, res) => {
     return sendSuccess(res, 200, 'Login successful', { user: safeUser, accessToken });
   } catch (err) {
     console.error('[AUTH] login error:', err);
+    if (err.name === 'PrismaClientInitializationError' || (err.message && err.message.includes("Can't reach database server"))) {
+      return sendError(res, 503, 'Database connection failed. Please try again later.');
+    }
     return sendError(res, 500, 'Login failed — please try again');
   }
 };
@@ -211,8 +217,8 @@ const me = async (req, res) => {
       if (categories.includes('organic_waste') || categories.includes('food_waste')) {
         ecoTips.push("Noticed food waste reports? Try starting a small home compost bin!");
       }
-      if (categories.includes('illegal_dumping')) {
-        ecoTips.push("Thank you for tracking illegal dumping. Keep an eye out for our upcoming neighborhood clean-up drive.");
+      if (categories.includes('waste_dumping')) {
+        ecoTips.push("Thank you for tracking waste dumping. Keep an eye out for our upcoming neighborhood clean-up drive.");
       }
       if (ecoTips.length === 0) {
         ecoTips.push("Tip: Segregating waste at home makes a huge difference. Keep up the good work!");

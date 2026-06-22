@@ -8,6 +8,7 @@ import { MapContainer, TileLayer, CircleMarker, useMapEvents } from 'react-leafl
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Geolocation } from '@capacitor/geolocation';
 import { Capacitor } from '@capacitor/core';
+import { useTranslation } from 'react-i18next';
 
 function MapEvents({ onPin }) {
   useMapEvents({
@@ -19,6 +20,7 @@ function MapEvents({ onPin }) {
 }
 
 export default function CollectionNew() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const fileRef = useRef();
   const [wasteType, setWasteType] = useState('');
@@ -80,14 +82,19 @@ export default function CollectionNew() {
     }
   };
 
-
-
-  const handleImage = async (fileOrEvent) => {
+  const handleImage = async (sourceTypeOrFile = 'PROMPT') => {
     try {
-      if (Capacitor.isNativePlatform()) {
+      if (sourceTypeOrFile instanceof File) {
+        setImage(sourceTypeOrFile);
+        setPreview(URL.createObjectURL(sourceTypeOrFile));
+      } else {
+        let source = CameraSource.Prompt;
+        if (sourceTypeOrFile === 'CAMERA') source = CameraSource.Camera;
+        else if (sourceTypeOrFile === 'GALLERY') source = CameraSource.Photos;
+
         const photo = await Camera.getPhoto({
           resultType: CameraResultType.Uri,
-          source: CameraSource.Camera,
+          source: source,
           quality: 90
         });
         
@@ -97,15 +104,12 @@ export default function CollectionNew() {
         
         setImage(file);
         setPreview(photo.webPath);
-      } else {
-        const file = fileOrEvent?.target?.files?.[0] || fileOrEvent;
-        if (!file) return;
-        setImage(file);
-        setPreview(URL.createObjectURL(file));
       }
     } catch (err) {
       console.error('Camera error:', err);
-      toast.error('Failed to capture photo');
+      if (err.message && !err.message.toLowerCase().includes('cancel')) {
+        toast.error('Failed to capture photo');
+      }
     }
   };
 
@@ -144,9 +148,9 @@ export default function CollectionNew() {
     <>
       <div className="app-content" style={{ maxWidth: 680, margin: '0 auto' }}>
         <div className="card">
-            <h2 style={{ marginBottom: 6 }}>♻️ Request Waste Pickup</h2>
+            <h2 style={{ marginBottom: 6 }}>{t('request_waste_pickup')}</h2>
             <p style={{ color: 'var(--color-gray-500)', fontSize: 13, marginBottom: 24 }}>
-              Schedule a pickup for segregated waste. Earn 5 pts + 15 pts on completion!
+              {t('earn_5_pts')}
             </p>
             <form onSubmit={handleSubmit}>
               {/* Waste Type Selector */}
@@ -238,22 +242,27 @@ export default function CollectionNew() {
               {/* Photo */}
               <div className="form-group">
                 <span className="form-label">Photo * (Mandatory for collection)</span>
-                <label className="image-upload-zone" style={{ display: 'block' }}>
+                <div className="image-upload-zone" style={{ display: 'block', textAlign: 'center' }}>
                   {preview ? (
-                    <img src={preview} alt="Preview" style={{ maxHeight: 140, borderRadius: 8, objectFit: 'cover' }} onClick={() => Capacitor.isNativePlatform() && handleImage()} />
+                    <img src={preview} alt="Preview" style={{ maxHeight: 140, borderRadius: 8, objectFit: 'cover', cursor: 'pointer' }} onClick={() => handleImage('PROMPT')} />
                   ) : (
-                    <div onClick={() => Capacitor.isNativePlatform() && handleImage()} style={{ cursor: 'pointer' }}>
-                      <div style={{ fontSize: 28 }}>📷</div>
-                      <div style={{ fontSize: 13, color: 'var(--color-gray-500)', marginTop: 6 }}>Tap or click to add photo</div>
-                      <div style={{ fontSize: 11, color: 'var(--color-gray-400)', marginTop: 4 }}>Native Camera / Gallery</div>
+                    <div style={{ padding: '10px 0' }}>
+                      <div style={{ fontSize: 32, marginBottom: 12 }}>📷</div>
+                      <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                        <button type="button" className="btn btn-outline btn-sm" onClick={() => handleImage('CAMERA')}>
+                          📷 {t('camera')}
+                        </button>
+                        <button type="button" className="btn btn-outline btn-sm" onClick={() => handleImage('GALLERY')}>
+                          🖼️ {t('gallery')}
+                        </button>
+                      </div>
                     </div>
                   )}
-                  {!Capacitor.isNativePlatform() && <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImage} />}
-                </label>
+                </div>
               </div>
 
               <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} id="collection-submit">
-                {loading ? <><span className="spinner" /> Submitting...</> : '📦 Request Pickup'}
+                {loading ? <><span className="spinner" /> Submitting...</> : t('request_pickup_btn')}
               </button>
             </form>
         </div>

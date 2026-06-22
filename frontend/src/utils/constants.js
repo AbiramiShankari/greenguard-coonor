@@ -34,7 +34,7 @@ export const WASTE_TYPES = [
 
 export const CATEGORIES = [
   { id: 'overflow', label: 'Overflow', color: '#ef4444' },
-  { id: 'illegal_dumping', label: 'Illegal Dumping', color: '#7c3aed' },
+  { id: 'waste_dumping', label: 'Waste Dumping', color: '#7c3aed' },
   { id: 'drainage', label: 'Drainage', color: '#3b82f6' },
   { id: 'litter', label: 'Litter', color: '#f97316' },
   { id: 'dead_animal', label: 'Dead Animal', color: '#6b7280' },

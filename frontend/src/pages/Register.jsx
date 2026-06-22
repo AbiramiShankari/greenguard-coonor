@@ -23,8 +23,12 @@ export default function Register() {
       toast.success(`Welcome to GreenGuard, ${user.name}! 🌿`);
       navigate('/dashboard');
     } catch (err) {
-      const msgs = err.response?.data?.errors?.map(e => e.msg).join(', ');
-      setError(msgs || err.response?.data?.message || 'Registration failed');
+      if (!err.response) {
+        setError('Cannot connect to server. Please check your internet connection or try again later.');
+      } else {
+        const msgs = err.response?.data?.errors?.map(e => e.msg).join(', ');
+        setError(msgs || err.response?.data?.message || 'Registration failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -40,7 +44,7 @@ export default function Register() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label className="form-label">Full Name</label>
               <input className="form-input" placeholder="Your full name" value={form.name} onChange={set('name')} required id="reg-name" />

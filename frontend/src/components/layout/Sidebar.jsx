@@ -8,7 +8,7 @@ const adminNav = [
   { to: '/admin', icon: '📊', labelKey: 'nav_dashboard', end: true },
   { to: '/map', icon: '🗺️', labelKey: 'nav_map' },
   { to: '/admin/sms', icon: '📱', labelKey: 'nav_sms' },
-  { to: '/admin/ai-confidence', icon: '🧠', labelKey: 'AI Confidence' },
+  { to: '/admin/ai-confidence', icon: '🧠', labelKey: 'nav_ai_confidence' },
 ];
 
 const citizenNav = [
@@ -50,8 +50,8 @@ export default function Sidebar({ isOpen, onClose }) {
       <div className="sidebar-logo">
         <div className="sidebar-logo-icon">🌿</div>
         <div>
-          <div className="sidebar-logo-text">GreenGuard</div>
-          <div className="sidebar-logo-sub">Tamil Nadu</div>
+          <div className="sidebar-logo-text">{t('app_title')}</div>
+          <div className="sidebar-logo-sub">{t('logo_sub')}</div>
         </div>
       </div>
 
@@ -70,7 +70,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
       {/* Navigation */}
       <nav className="sidebar-nav">
-        <div className="nav-section-title">Navigation</div>
+        <div className="nav-section-title">{t('navigation')}</div>
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -95,7 +95,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
       {/* Footer */}
       <div style={{ padding: '12px 20px', marginTop: 'auto', fontSize: 10, color: 'var(--color-gray-400)', borderTop: '1px solid var(--color-gray-100)' }}>
-        Sanitation Dept · Tamil Nadu Govt
+        {t('footer_text')}
       </div>
     </aside>
   );

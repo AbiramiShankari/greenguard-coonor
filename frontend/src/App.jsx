@@ -19,6 +19,7 @@ import SmsPanel from './pages/SmsPanel';
 import Store from './pages/Store';
 import UpcycleHub from './pages/UpcycleHub';
 import AiConfidencePanel from './pages/AiConfidencePanel';
+import Profile from './pages/Profile';
 import Layout from './components/layout/Layout';
 
 // Protected route wrapper — redirects to /login if not authenticated
@@ -83,6 +84,7 @@ const AppWithSocket = () => (
         <Route path="/map" element={<ProtectedRoute><MapView /></ProtectedRoute>} />
         <Route path="/store" element={<ProtectedRoute><Store /></ProtectedRoute>} />
         <Route path="/upcycle" element={<ProtectedRoute><UpcycleHub /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       </Route>
 
       {/* Default redirect */}

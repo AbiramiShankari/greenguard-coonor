@@ -212,6 +212,9 @@ const smsEvents = {
 
   otp_verification: ({ otp }) =>
     `GreenGuard🔒 Your OTP to redeem the reward is ${otp}. Valid for 10 minutes. Do not share this.`,
+
+  new_drive: ({ title, city, date }) =>
+    `GreenGuard📢 New Drive in ${city}: ${title} on ${date}. Register now in the app to participate and earn rewards!`,
 };
 
 /**

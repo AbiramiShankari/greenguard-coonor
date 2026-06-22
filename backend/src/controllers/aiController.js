@@ -56,7 +56,7 @@ exports.analyzeComplaintImage = async (req, res) => {
     const prompt = `Analyze this image of a civic issue (likely waste or infrastructure problem).
 Return a raw JSON object (no markdown tags, just pure JSON) with the following structure:
 {
-  "category": "One of: overflow, illegal_dumping, drainage, litter, other",
+  "category": "One of: overflow, waste_dumping, drainage, litter, other",
   "priority": "One of: LOW, MEDIUM, HIGH, CRITICAL. (CRITICAL if blocking road/drain or hazardous)",
   "description_suggestion": "A concise 1-sentence description of the issue shown."
 }`;

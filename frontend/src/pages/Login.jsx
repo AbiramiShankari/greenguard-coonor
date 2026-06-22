@@ -22,7 +22,11 @@ export default function Login() {
       else if (user.role === 'COLLECTOR') navigate('/collector');
       else navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed — please try again');
+      if (!err.response) {
+        setError('Cannot connect to server. Please check your internet connection or try again later.');
+      } else {
+        setError(err.response?.data?.message || 'Login failed — please try again');
+      }
     } finally {
       setLoading(false);
     }
@@ -92,6 +96,8 @@ export default function Login() {
           <div style={{ fontWeight: 600, marginBottom: 4 }}>Test Credentials:</div>
           <div>Admin: admin@greenguard.tn.gov.in / Admin@123</div>
           <div>Citizen: priya@example.com / Citizen@123</div>
+          <div>Citizen: +919025303064 / Citizen@123</div>
+          <div style={{fontSize: '11px', color: '#666', marginTop: '2px'}}>(Other tests: +919092317312, +918072153966)</div>
           <div>Collector: karthik@greenguard.tn.gov.in / Collector@123</div>
         </div>
       </div>

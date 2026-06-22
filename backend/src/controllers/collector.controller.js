@@ -3,6 +3,8 @@ const { PrismaClient } = require('@prisma/client');
 const { sendSuccess, sendError } = require('../utils/response.utils');
 const { sendEventSMS } = require('../services/sms.service');
 
+const { uploadImage } = require('../services/cloudinary.service');
+
 const prisma = new PrismaClient();
 
 // ─── GET /api/collector/tasks ──────────────────────────────────────────────────
@@ -34,11 +36,25 @@ const getMyTasks = async (req, res) => {
 // ─── POST /api/collector/tasks/resolve ─────────────────────────────────────────
 const resolveTask = async (req, res) => {
   try {
-    const { taskId, type, resolvedImageUrl } = req.body;
+    const { taskId, type } = req.body;
+    let { resolvedImageUrl } = req.body;
     const collectorId = req.user.id;
 
-    if (!taskId || !type || !resolvedImageUrl) {
-      return sendError(res, 400, 'Missing required fields (taskId, type, resolvedImageUrl)');
+    if (!taskId || !type) {
+      return sendError(res, 400, 'Missing required fields (taskId, type)');
+    }
+
+    if (req.file) {
+      const uploadResult = await uploadImage(req.file.buffer, 'resolutions');
+      if (uploadResult && uploadResult.url) {
+        resolvedImageUrl = uploadResult.url;
+      } else {
+        return sendError(res, 500, 'Failed to upload resolution image');
+      }
+    }
+
+    if (!resolvedImageUrl) {
+      return sendError(res, 400, 'A resolution image is required');
     }
 
     if (type === 'complaint') {

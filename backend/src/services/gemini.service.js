@@ -83,13 +83,15 @@ const categoriseComplaint = async (description, imageUrl = null, imageFile = nul
     }
 
     // Build prompt — strict JSON only, no markdown wrappers
-    const prompt = `You are a waste management AI for Indian cities. Analyse this waste complaint:
+    const prompt = `You are a waste management AI for Indian cities. Analyse this waste complaint carefully:
+- Use 'waste_dumping' for unauthorized piles of trash or garbage. Do NOT use the term "illegal" or assume it's illegal unless there's evidence of massive industrial dumping.
+- Use 'litter' for smaller, scattered pieces of trash.
 Description: ${description}
 ${imageUrl ? `Image URL: ${imageUrl}` : ''}
 
 Return ONLY valid JSON, no markdown, no extra text:
 {
-  "category": "overflow|illegal_dumping|drainage|litter|dead_animal|construction_waste|other",
+  "category": "overflow|waste_dumping|drainage|litter|dead_animal|construction_waste|other",
   "confidence": 0.0-1.0,
   "severity": "low|medium|high|critical",
   "severityScore": 0.0-1.0,

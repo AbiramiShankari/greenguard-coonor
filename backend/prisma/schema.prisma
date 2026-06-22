@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -101,6 +102,7 @@ model Complaint {
   street      String?
   description String
   imageUrl    String
+  landmarkImageUrl String?
   imageHash   String? // For AI duplicate detection
   lat         Float?
   lng         Float?
@@ -110,7 +112,7 @@ model Complaint {
   resolvedImageUrl String?
 
   // AI-generated fields
-  aiCategory      String? // overflow|illegal_dumping|drainage|litter|dead_animal|construction_waste|other
+  aiCategory      String? // overflow|waste_dumping|drainage|litter|dead_animal|construction_waste|other
   aiConfidence    Float?
   aiSeverity      String? // low|medium|high|critical
   aiSeverityScore Float?

@@ -46,7 +46,7 @@ export default function AiConfidencePanel() {
     <div className="app-content">
       <h2 style={{ marginBottom: 24 }}>🧠 AI Confidence & Agent Logs</h2>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
         <div className="card">
           <h3 className="card-title">Average AI Confidence</h3>
           <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-primary)' }}>

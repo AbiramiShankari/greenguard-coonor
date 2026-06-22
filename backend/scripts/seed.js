@@ -76,6 +76,49 @@ async function main() {
   });
   console.log(`✅ Created CITIZEN: ${citizen2.email}`);
 
+  const citizen3 = await prisma.user.create({
+    data: {
+      name: 'Test User A',
+      email: 'testA@example.com',
+      phone: '+919025303064',
+      password: citizenPassword,
+      role: 'CITIZEN',
+      city: 'Bedford',
+      smsOptIn: true,
+      totalPoints: 100,
+      currentBadge: 'Silver Guardian 🥈',
+    },
+  });
+  console.log(`✅ Created CITIZEN: ${citizen3.phone}`);
+
+  const citizen4 = await prisma.user.create({
+    data: {
+      name: 'Test User B',
+      email: 'testB@example.com',
+      phone: '+919092317312',
+      password: citizenPassword,
+      role: 'CITIZEN',
+      city: 'Wellington',
+      smsOptIn: true,
+      totalPoints: 20,
+    },
+  });
+  console.log(`✅ Created CITIZEN: ${citizen4.phone}`);
+
+  const citizen5 = await prisma.user.create({
+    data: {
+      name: 'Test User C',
+      email: 'testC@example.com',
+      phone: '+918072153966',
+      password: citizenPassword,
+      role: 'CITIZEN',
+      city: 'Bedford',
+      smsOptIn: true,
+      totalPoints: 50,
+    },
+  });
+  console.log(`✅ Created CITIZEN: ${citizen5.phone}`);
+
   const collector = await prisma.user.create({
     data: {
       name: 'Karthik Selvam',
@@ -121,17 +164,17 @@ async function main() {
       city: 'Wellington',
       ward: 'Ward 2 - Barracks',
       location: 'Wellington Barracks near market',
-      description: 'Someone has illegally dumped construction debris and mixed waste near the park entrance. This is blocking the footpath.',
+      description: 'Someone has dumped construction debris and mixed waste near the park entrance. This is blocking the footpath.',
       imageUrl: 'https://images.unsplash.com/photo-1528323273322-d81458248d40',
       imageHash: 'mock-hash-2',
       street: 'Market Road',
       lat: 11.3653,
       lng: 76.7865,
-      aiCategory: 'illegal_dumping',
+      aiCategory: 'waste_dumping',
       aiConfidence: 0.88,
       aiSeverity: 'critical',
       aiSeverityScore: 0.95,
-      aiSummary: 'Illegal construction waste dump blocking public footpath',
+      aiSummary: 'Construction waste dump blocking public footpath',
       priority: 'CRITICAL',
       status: 'NEW',
       upvoteCount: 12,
@@ -238,7 +281,7 @@ async function main() {
       {
         userId: citizen2.id, phone: citizen2.phone,
         event: 'complaint_submitted', status: 'SENT',
-        message: 'GreenGuard✅ Complaint received in Wellington. Category: illegal_dumping. Earned 10pts!',
+        message: 'GreenGuard✅ Complaint received in Wellington. Category: waste_dumping. Earned 10pts!',
         twilioSid: 'SM_DEMO_002',
       },
       {

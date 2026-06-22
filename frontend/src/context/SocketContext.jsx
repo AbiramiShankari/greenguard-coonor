@@ -19,9 +19,10 @@ export const SocketProvider = ({ children }) => {
     if (!token) return;
 
     // Connect with JWT in handshake auth
-    const socket = io('http://localhost:3001', {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.DEV ? 'http://localhost:3001' : undefined);
+    const socket = io(socketUrl, {
       auth: { token },
-      transports: ['websocket'],
+      // Vercel Serverless requires polling fallback; remove strict 'websocket' transport constraint
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

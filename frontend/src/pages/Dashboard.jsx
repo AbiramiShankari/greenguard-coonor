@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import { timeAgo, truncate, getStatusClass, getPriorityClass, getCategoryClass, formatConfidence } from '../utils/format';
 import { BADGE_THRESHOLDS } from '../utils/constants';
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { user, updateUser } = useAuth();
   const { socket } = useSocket();
   const [complaints, setComplaints] = useState([]);
@@ -16,6 +18,7 @@ export default function Dashboard() {
   const [rewards, setRewards] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [nearbyReports, setNearbyReports] = useState([]);
+  const [drives, setDrives] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const handleRedeem = async (rewardId, cost) => {
@@ -38,18 +41,20 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [cRes, colRes, rRes, lRes, nRes] = await Promise.all([
+        const [cRes, colRes, rRes, lRes, nRes, dRes] = await Promise.all([
           api.get('/complaints?limit=5'),
           api.get('/collections?limit=3'),
           api.get('/rewards/me'),
           api.get(`/rewards/leaderboard?city=${user.city}&limit=5`),
-          api.get('/complaints/nearby')
+          api.get('/complaints/nearby'),
+          api.get(`/drives?city=${user.city}`)
         ]);
         setComplaints(cRes.data.data.complaints);
         setCollections(colRes.data.data.collections);
         setRewards(rRes.data.data.history);
         setLeaderboard(lRes.data.data.leaderboard);
         setNearbyReports(nRes.data.data.nearby);
+        setDrives(dRes.data.data.drives || []);
       } catch (err) {
         toast.error('Failed to load dashboard data');
       } finally {
@@ -80,11 +85,32 @@ export default function Dashboard() {
       if (badge) toast.success(`🏆 New badge: ${badge}!`, { duration: 6000 });
     });
 
+    socket.on('new_drive', (data) => {
+      // Re-fetch drives or just add it
+      if (data.city === user.city) {
+        setDrives(prev => [data, ...prev]);
+        toast(`📢 New Local Drive announced: ${data.title}`);
+      }
+    });
+
     return () => {
       socket?.off('status_updated');
       socket?.off('points_awarded');
+      socket?.off('new_drive');
     };
   }, [socket, user, updateUser]);
+
+  const handleRegisterDrive = async (driveId) => {
+    try {
+      await api.post(`/drives/${driveId}/join`);
+      toast.success('Successfully registered for the drive!');
+      // Refetch drives to update status
+      const dRes = await api.get(`/drives?city=${user.city}`);
+      setDrives(dRes.data.data.drives || []);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to register');
+    }
+  };
 
   if (loading) {
     return (
@@ -104,15 +130,15 @@ export default function Dashboard() {
           }}>
             <div>
               <h2 style={{ color: 'white', marginBottom: 4, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                Hello, {user.name} 👋 
+                {t('hello')}, {user.name} 👋 
                 <span style={{fontSize: '14px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '12px', fontWeight: 500}}>
                   {user.greenguardId || user.id}
                 </span>
               </h2>
-              <p style={{ opacity: 0.85, fontSize: 14 }}>{user.city} · Keep Tamil Nadu green!</p>
+              <p style={{ opacity: 0.85, fontSize: 14 }}>{user.city} · {t('keep_green')}</p>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>{user.totalPoints || 0} pts</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>{user.totalPoints || 0} {t('points')}</div>
               <div style={{ fontSize: 13, opacity: 0.85 }}>{user.currentBadge || 'Start earning badges!'}</div>
             </div>
           </div>
@@ -125,8 +151,8 @@ export default function Dashboard() {
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-primary-200)'}
               >
                 <div style={{ fontSize: 36, marginBottom: 8 }}>🗑️</div>
-                <div style={{ fontWeight: 600, color: 'var(--color-gray-800)' }}>Report Waste</div>
-                <div style={{ fontSize: 12, color: 'var(--color-gray-500)', marginTop: 4 }}>+10 pts on submit</div>
+                <div style={{ fontWeight: 600, color: 'var(--color-gray-800)' }}>{t('report_waste')}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-gray-500)', marginTop: 4 }}>+10 {t('pts_on_submit')}</div>
               </div>
             </Link>
             <Link to="/collection/new" style={{ textDecoration: 'none' }}>
@@ -135,8 +161,8 @@ export default function Dashboard() {
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-primary-200)'}
               >
                 <div style={{ fontSize: 36, marginBottom: 8 }}>♻️</div>
-                <div style={{ fontWeight: 600, color: 'var(--color-gray-800)' }}>Request Pickup</div>
-                <div style={{ fontSize: 12, color: 'var(--color-gray-500)', marginTop: 4 }}>+5 pts on submit</div>
+                <div style={{ fontWeight: 600, color: 'var(--color-gray-800)' }}>{t('request_pickup')}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-gray-500)', marginTop: 4 }}>+5 {t('pts_on_submit')}</div>
               </div>
             </Link>
           </div>
@@ -146,7 +172,7 @@ export default function Dashboard() {
             <div style={{ marginBottom: 28, padding: '16px 20px', background: 'var(--color-primary-50)', border: '1px solid var(--color-primary-200)', borderRadius: 'var(--radius-lg)', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
               <div style={{ fontSize: 24 }}>💡</div>
               <div>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary-dark)', marginBottom: 4 }}>AI Eco Insights</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-primary-dark)', marginBottom: 4 }}>{t('eco_insights')}</h3>
                 <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'var(--color-gray-700)', lineHeight: 1.5 }}>
                   {user.ecoTips.map((tip, idx) => (
                     <li key={idx}>{tip}</li>
@@ -156,115 +182,255 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
-            <div>
-              {/* My Complaints */}
-              <div className="card" style={{ marginBottom: 24 }}>
-                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 className="card-title">My Complaints</h3>
-                  <Link to="/map" style={{ fontSize: 12, color: 'var(--color-primary)' }}>View Map →</Link>
-                </div>
-                {complaints.length === 0 ? (
-                  <p style={{ color: 'var(--color-gray-400)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>
-                    No complaints yet. <Link to="/complaint/new" style={{ color: 'var(--color-primary)' }}>Report one →</Link>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {/* My Complaints */}
+            <div className="card">
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 className="card-title">{t('my_complaints')}</h3>
+                <Link to="/map" style={{ fontSize: 12, color: 'var(--color-primary)' }}>{t('view_map')}</Link>
+              </div>
+              {complaints.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', background: 'var(--color-gray-50)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.5 }}>🍃</div>
+                  <h4 style={{ color: 'var(--color-gray-700)', marginBottom: 4 }}>No Complaints Yet</h4>
+                  <p style={{ color: 'var(--color-gray-500)', fontSize: 13, marginBottom: 12 }}>
+                    Help keep {user.city} clean by reporting issues around you.
                   </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {complaints.map(c => (
-                      <div key={c.id} style={{ padding: '12px 16px', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        {c.imageUrl && <img src={c.imageUrl} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                            <span className={`badge ${getCategoryClass(c.aiCategory)}`}>{c.aiCategory || 'unknown'}</span>
-                            <span className={`badge ${getStatusClass(c.status)}`}>{c.status}</span>
-                            <span className={`badge ${getPriorityClass(c.priority)}`}>{c.priority}</span>
-                          </div>
-                          <p style={{ fontSize: 13, color: 'var(--color-gray-700)', marginBottom: 4 }}>{truncate(c.description, 60)}</p>
-                          <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--color-gray-400)' }}>
-                            <span>👍 {c.upvoteCount}</span>
-                            {c.aiConfidence && <span>AI: {formatConfidence(c.aiConfidence)}</span>}
-                            <span>{timeAgo(c.createdAt)}</span>
-                          </div>
+                  <Link to="/complaint/new" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: 13 }}>
+                    Report Issue
+                  </Link>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {complaints.map(c => (
+                    <div key={c.id} style={{ padding: '12px 16px', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      {c.imageUrl && <img src={c.imageUrl} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                          <span className={`badge ${getCategoryClass(c.aiCategory)}`}>{c.aiCategory || 'unknown'}</span>
+                          <span className={`badge ${getStatusClass(c.status)}`}>{c.status}</span>
+                          <span className={`badge ${getPriorityClass(c.priority)}`}>{c.priority}</span>
+                        </div>
+                        <p style={{ fontSize: 13, color: 'var(--color-gray-700)', marginBottom: 4 }}>{truncate(c.description, 60)}</p>
+                        <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--color-gray-400)' }}>
+                          <span>👍 {c.upvoteCount}</span>
+                          {c.aiConfidence && <span>AI: {formatConfidence(c.aiConfidence)}</span>}
+                          <span>{timeAgo(c.createdAt)}</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Nearby Reports */}
-              <div className="card" style={{ marginBottom: 24 }}>
-                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 className="card-title">Nearby Reports ({user.city})</h3>
-                  <Link to="/map" style={{ fontSize: 12, color: 'var(--color-primary)' }}>View on Map →</Link>
+                    </div>
+                  ))}
                 </div>
-                {nearbyReports.length === 0 ? (
-                  <p style={{ color: 'var(--color-gray-400)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>
-                    No other reports in your area recently.
+              )}
+            </div>
+
+            {/* My Pickup Requests */}
+            <div className="card">
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 className="card-title">{t('my_pickup')}</h3>
+                <Link to="/collection/new" style={{ fontSize: 12, color: 'var(--color-primary)' }}>{t('request_one')}</Link>
+              </div>
+              {collections.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', background: 'var(--color-gray-50)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.5 }}>♻️</div>
+                  <h4 style={{ color: 'var(--color-gray-700)', marginBottom: 4 }}>No Pickups Yet</h4>
+                  <p style={{ color: 'var(--color-gray-500)', fontSize: 13, marginBottom: 12 }}>
+                    Have bulk or recyclable waste? Request a door-step pickup.
                   </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {nearbyReports.map(c => (
-                      <div key={c.id} style={{ padding: '12px 16px', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        {c.imageUrl && <img src={c.imageUrl} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                            <span className={`badge ${getCategoryClass(c.aiCategory)}`}>{c.aiCategory || 'unknown'}</span>
-                            <span className={`badge ${getStatusClass(c.status)}`}>{c.status}</span>
-                          </div>
-                          <p style={{ fontSize: 13, color: 'var(--color-gray-700)', marginBottom: 4 }}>{truncate(c.description, 60)}</p>
-                          <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--color-gray-400)' }}>
-                            <span>👍 {c._count?.upvotes || 0}</span>
-                            <span>{timeAgo(c.createdAt)}</span>
-                          </div>
+                  <Link to="/collection/new" className="btn btn-primary" style={{ padding: '8px 16px', fontSize: 13, background: 'var(--color-gray-800)' }}>
+                    Request Pickup
+                  </Link>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {collections.map(c => (
+                    <div key={c.id} style={{ padding: '12px 16px', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', display: 'flex', gap: 12, alignItems: 'center' }}>
+                      {c.imageUrl ? (
+                        <img src={c.imageUrl} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ fontSize: 24, width: 52, height: 52, background: 'var(--color-gray-100)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>♻️</div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                          <span className="badge badge-low" style={{ textTransform: 'capitalize' }}>{c.wasteType.toLowerCase()}</span>
+                          <span className={`badge ${c.status === 'COMPLETED' ? 'badge-resolved' : c.status === 'ASSIGNED' ? 'badge-in-progress' : 'badge-new'}`}>{c.status}</span>
                         </div>
+                        <p style={{ fontSize: 13, color: 'var(--color-gray-700)', marginBottom: 2 }}>{c.quantity} kg estimated</p>
+                        <div style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>📍 {c.address}</div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* My Pickup Requests */}
-              <div className="card" style={{ marginBottom: 24 }}>
-                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 className="card-title">My Pickup Requests</h3>
-                  <Link to="/collection/new" style={{ fontSize: 12, color: 'var(--color-primary)' }}>Request Pickup →</Link>
+                    </div>
+                  ))}
                 </div>
-                {collections.length === 0 ? (
-                  <p style={{ color: 'var(--color-gray-400)', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>
-                    No pickup requests yet. <Link to="/collection/new" style={{ color: 'var(--color-primary)' }}>Request one →</Link>
+              )}
+            </div>
+
+            {/* Local Drives */}
+            <div className="card">
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 className="card-title">Local Drives ({user.city})</h3>
+              </div>
+              {drives.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', background: 'var(--color-gray-50)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.5 }}>🌱</div>
+                  <h4 style={{ color: 'var(--color-gray-700)', marginBottom: 4 }}>No Upcoming Drives</h4>
+                  <p style={{ color: 'var(--color-gray-500)', fontSize: 13 }}>
+                    Check back later for community cleanup and plantation events.
                   </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {collections.map(c => (
-                      <div key={c.id} style={{ padding: '12px 16px', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', display: 'flex', gap: 12, alignItems: 'center' }}>
-                        {c.imageUrl ? (
-                          <img src={c.imageUrl} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {drives.map(d => {
+                    const isRegistered = d.participants?.some(p => p.userId === user.id);
+                    return (
+                      <div key={d.id} style={{ padding: '16px', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', display: 'flex', gap: 16, alignItems: 'center' }}>
+                        {d.imageUrl ? (
+                          <img src={d.imageUrl} alt="" style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
                         ) : (
-                          <div style={{ fontSize: 24, width: 52, height: 52, background: 'var(--color-gray-100)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>♻️</div>
+                          <div style={{ fontSize: 28, width: 64, height: 64, background: 'var(--color-primary-50)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🌱</div>
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                            <span className="badge badge-low" style={{ textTransform: 'capitalize' }}>{c.wasteType.toLowerCase()}</span>
-                            <span className={`badge ${c.status === 'COMPLETED' ? 'badge-resolved' : c.status === 'ASSIGNED' ? 'badge-in-progress' : 'badge-new'}`}>{c.status}</span>
-                          </div>
-                          <p style={{ fontSize: 13, color: 'var(--color-gray-700)', marginBottom: 2 }}>{c.quantity} kg estimated</p>
-                          <div style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>📍 {c.address}</div>
+                          <h4 style={{ margin: '0 0 4px 0', fontSize: 15, color: 'var(--color-gray-900)' }}>{d.title}</h4>
+                          <div style={{ fontSize: 12, color: 'var(--color-gray-500)', marginBottom: 4 }}>📍 {d.location} | 📅 {formatDateTime(d.date)}</div>
+                          <p style={{ fontSize: 13, color: 'var(--color-gray-700)', margin: 0 }}>{truncate(d.description, 80)}</p>
+                        </div>
+                        <div style={{ flexShrink: 0 }}>
+                          <button 
+                            className={`btn ${isRegistered ? 'btn-ghost' : 'btn-primary'} btn-sm`} 
+                            onClick={() => !isRegistered && handleRegisterDrive(d.id)}
+                            disabled={isRegistered || d.status !== 'PLANNED'}
+                          >
+                            {isRegistered ? 'Registered ✅' : d.status !== 'PLANNED' ? d.status : 'Register'}
+                          </button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
-              {/* Points History */}
-              <div className="card" style={{ marginBottom: 24 }}>
-                <h3 className="card-title card-header">Points History</h3>
-                {rewards.length === 0 ? (
-                  <p style={{ color: 'var(--color-gray-400)', fontSize: 13 }}>No rewards yet</p>
-                ) : (
+            {/* Nearby Reports */}
+            <div className="card">
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 className="card-title">{t('nearby_reports')} ({user.city})</h3>
+                <Link to="/map" style={{ fontSize: 12, color: 'var(--color-primary)' }}>{t('view_on_map')}</Link>
+              </div>
+              {nearbyReports.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', background: 'var(--color-gray-50)', borderRadius: 'var(--radius-md)' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.5 }}>🏙️</div>
+                  <h4 style={{ color: 'var(--color-gray-700)', marginBottom: 4 }}>All Clear in {user.city}</h4>
+                  <p style={{ color: 'var(--color-gray-500)', fontSize: 13 }}>
+                    There are no active complaints nearby. Great job!
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {nearbyReports.map(c => (
+                    <div key={c.id} style={{ padding: '12px 16px', border: '1px solid var(--color-gray-100)', borderRadius: 'var(--radius-md)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      {c.imageUrl && <img src={c.imageUrl} alt="" style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                          <span className={`badge ${getCategoryClass(c.aiCategory)}`}>{c.aiCategory || 'unknown'}</span>
+                          <span className={`badge ${getStatusClass(c.status)}`}>{c.status}</span>
+                        </div>
+                        <p style={{ fontSize: 13, color: 'var(--color-gray-700)', marginBottom: 4 }}>{truncate(c.description, 60)}</p>
+                        <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--color-gray-400)' }}>
+                          <span>👍 {c._count?.upvotes || 0}</span>
+                          <span>{timeAgo(c.createdAt)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Leaderboard */}
+            <div className="card">
+              <h3 className="card-title card-header">{t('leaderboard', { city: user.city })}</h3>
+              {leaderboard.map(item => (
+                <div key={item.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
+                  borderBottom: '1px solid var(--color-gray-100)',
+                }}>
+                  <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>
+                    {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : `${item.rank}.`}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: item.id === user.id ? 'var(--color-primary)' : 'var(--color-gray-800)' }}>
+                      {item.name} {item.id === user.id && t('you')}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>{item.badge}</div>
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>{item.points}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Claim & Redeem Rewards */}
+            <div className="card">
+              <h3 className="card-title card-header">{t('claim_rewards')}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[
+                  { id: 'tea', label: '🍵 Nilgiris Organic Tea Packet', cost: 100 },
+                  { id: 'mug', label: '🥛 Eco-Friendly Bamboo Mug', cost: 200 },
+                  { id: 'train', label: '🚂 Coonoor Toy Train Ticket Discount', cost: 300 },
+                ].map(item => {
+                  const canRedeem = (user.totalPoints || 0) >= item.cost;
+                  return (
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', border: '1px solid var(--color-gray-100)', borderRadius: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{item.label}</div>
+                        <div style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>{t('cost')}: {item.cost} {t('points')}</div>
+                      </div>
+                      <button
+                        className={`btn ${canRedeem ? 'btn-primary' : 'btn-ghost'} btn-sm`}
+                        disabled={!canRedeem}
+                        onClick={() => handleRedeem(item.id, item.cost)}
+                        style={{ minWidth: 80 }}
+                      >
+                        {canRedeem ? t('redeem') : t('locked')}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Badge Unlocks */}
+            <div className="card">
+              <h3 className="card-title card-header">{t('badge_unlocking')}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {BADGE_THRESHOLDS.map(b => {
+                  const unlocked = (user.totalPoints || 0) >= b.minPoints;
+                  return (
+                    <div key={b.badge} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: unlocked ? 1 : 0.6 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: unlocked ? 'var(--color-primary)' : 'var(--color-gray-700)' }}>
+                          {b.badge} {unlocked && '✅'}
+                        </span>
+                        <span style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>{t('requires_pts', { pts: b.minPoints })}</span>
+                      </div>
+                      {!unlocked && (
+                        <span style={{ fontSize: 11, background: 'var(--color-gray-100)', padding: '2px 6px', borderRadius: 4 }}>
+                          {t('pts_left', { pts: b.minPoints - (user.totalPoints || 0) })}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Points History */}
+            <div className="card">
+              <h3 className="card-title card-header">{t('points_history')}</h3>
+              {rewards.length === 0 ? (
+                <p style={{ color: 'var(--color-gray-400)', fontSize: 13 }}>{t('no_rewards')}</p>
+              ) : (
+                <div className="table-wrapper">
                   <table className="data-table">
-                    <thead><tr><th>Reason</th><th>Points</th><th>Date</th></tr></thead>
+                    <thead><tr><th>{t('reason')}</th><th>{t('points')}</th><th>{t('date')}</th></tr></thead>
                     <tbody>
                       {rewards.map(r => (
                         <tr key={r.id}>
@@ -277,87 +443,8 @@ export default function Dashboard() {
                       ))}
                     </tbody>
                   </table>
-                )}
-              </div>
-
-              {/* Claim & Redeem Rewards */}
-              <div className="card">
-                <h3 className="card-title card-header">🎁 Claim & Redeem Rewards</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {[
-                    { id: 'tea', label: '🍵 Nilgiris Organic Tea Packet', cost: 100 },
-                    { id: 'mug', label: '🥛 Eco-Friendly Bamboo Mug', cost: 200 },
-                    { id: 'train', label: '🚂 Coonoor Toy Train Ticket Discount', cost: 300 },
-                  ].map(item => {
-                    const canRedeem = (user.totalPoints || 0) >= item.cost;
-                    return (
-                      <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', border: '1px solid var(--color-gray-100)', borderRadius: 8 }}>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{item.label}</div>
-                          <div style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>Cost: {item.cost} points</div>
-                        </div>
-                        <button
-                          className={`btn ${canRedeem ? 'btn-primary' : 'btn-ghost'} btn-sm`}
-                          disabled={!canRedeem}
-                          onClick={() => handleRedeem(item.id, item.cost)}
-                          style={{ minWidth: 80 }}
-                        >
-                          {canRedeem ? 'Redeem' : 'Locked 🔒'}
-                        </button>
-                      </div>
-                    );
-                  })}
                 </div>
-              </div>
-            </div>
-
-            {/* Right Column: Leaderboard */}
-            <div>
-              <div className="card">
-                <h3 className="card-title card-header">🏆 {user.city} Leaderboard</h3>
-                {leaderboard.map(item => (
-                  <div key={item.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
-                    borderBottom: '1px solid var(--color-gray-100)',
-                  }}>
-                    <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>
-                      {item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : `${item.rank}.`}
-                    </span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: item.id === user.id ? 'var(--color-primary)' : 'var(--color-gray-800)' }}>
-                        {item.name} {item.id === user.id && '(You)'}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>{item.badge}</div>
-                    </div>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>{item.points}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Badge Unlocks */}
-              <div className="card" style={{ marginTop: 20 }}>
-                <h3 className="card-title card-header">🎖️ Badge Unlocking</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {BADGE_THRESHOLDS.map(b => {
-                    const unlocked = (user.totalPoints || 0) >= b.minPoints;
-                    return (
-                      <div key={b.badge} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: unlocked ? 1 : 0.6 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: 600, fontSize: 13, color: unlocked ? 'var(--color-primary)' : 'var(--color-gray-700)' }}>
-                            {b.badge} {unlocked && '✅'}
-                          </span>
-                          <span style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>Requires {b.minPoints} pts</span>
-                        </div>
-                        {!unlocked && (
-                          <span style={{ fontSize: 11, background: 'var(--color-gray-100)', padding: '2px 6px', borderRadius: 4 }}>
-                            {b.minPoints - (user.totalPoints || 0)} pts left
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              )}
             </div>
           </div>
     </>

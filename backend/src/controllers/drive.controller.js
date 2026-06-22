@@ -41,6 +41,29 @@ const createDrive = async (req, res) => {
       },
     });
 
+    // Notify citizens in the same city
+    const io = req.app.get('io');
+    if (io) {
+      // Assuming users join a room named after their city, or we just broadcast to everyone
+      // For simplicity, broadcast to all for now.
+      io.emit('new_drive', drive);
+    }
+
+    // Send SMS to users in the city
+    const citizens = await prisma.user.findMany({
+      where: { role: 'CITIZEN', city },
+      select: { id: true, phone: true }
+    });
+
+    // Fire and forget SMS
+    Promise.all(citizens.map(citizen => 
+      sendEventSMS('new_drive', { 
+        title: drive.title, 
+        city: drive.city, 
+        date: drive.date.toLocaleDateString() 
+      }, citizen.phone, citizen.id)
+    )).catch(err => console.error('[Drive] SMS broadcast error:', err));
+
     return sendSuccess(res, 201, 'Drive created successfully', drive);
   } catch (error) {
     console.error('[DriveController] createDrive Error:', error);

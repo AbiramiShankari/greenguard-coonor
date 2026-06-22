@@ -51,7 +51,7 @@ export default function SmsPanel() {
     <>
       <div className="app-content">
         {/* Stats + Toggle */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 16, marginBottom: 24, alignItems: 'start' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24, alignItems: 'stretch' }}>
             {stats && [
               { label: 'Sent Today', value: stats.sentToday, color: '#16a34a' },
               { label: 'Failed Today', value: stats.failedToday, color: '#ef4444' },

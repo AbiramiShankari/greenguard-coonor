@@ -25,19 +25,26 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [insightLoading, setInsightLoading] = useState(false);
   const [collectors, setCollectors] = useState([]);
+  const [activeComparison, setActiveComparison] = useState(null);
+  const [drives, setDrives] = useState([]);
+  const [showDriveModal, setShowDriveModal] = useState(false);
+  const [driveForm, setDriveForm] = useState({ title: '', description: '', location: '', city: CITIES[0], ward: 'Ward 1', date: '', image: null });
+  const [isSubmittingDrive, setIsSubmittingDrive] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [statsRes, insightRes, cRes, colRes] = await Promise.all([
+      const [statsRes, insightRes, cRes, colRes, dRes] = await Promise.all([
         api.get('/admin/stats'),
         api.get('/admin/ai-insight'),
         api.get('/complaints?' + new URLSearchParams(filters).toString() + '&limit=50'),
-        api.get('/admin/collectors')
+        api.get('/admin/collectors'),
+        api.get('/drives')
       ]);
       setStats(statsRes.data.data);
       setInsight(insightRes.data.data.insight);
       setComplaints(cRes.data.data.complaints);
       setCollectors(colRes.data.data.collectors);
+      setDrives(dRes.data.data.drives || []);
     } catch {
       toast.error('Failed to load admin data');
     } finally {
@@ -98,6 +105,23 @@ export default function AdminDashboard() {
     } catch { toast.error('Export failed'); }
   };
 
+  const handleCreateDrive = async (e) => {
+    e.preventDefault();
+    setIsSubmittingDrive(true);
+    try {
+      const formData = new FormData();
+      Object.entries(driveForm).forEach(([k, v]) => formData.append(k, v));
+      const res = await api.post('/drives', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setDrives(prev => [res.data.data, ...prev]);
+      setShowDriveModal(false);
+      setDriveForm({ title: '', description: '', location: '', city: CITIES[0], ward: 'Ward 1', date: '', image: null });
+      toast.success('Drive created and users notified!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create drive');
+    }
+    setIsSubmittingDrive(false);
+  };
+
   if (loading) return <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center' }}><div className="spinner" /></div>;
 
   const trendIcon = insight?.weeklyTrend === 'improving' ? '↑' : insight?.weeklyTrend === 'worsening' ? '↓' : '→';
@@ -114,7 +138,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stat Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
             {[
               { label: 'Complaints Today', value: stats?.totalComplaintsToday ?? 0, accent: '#3b82f6' },
               { label: 'Resolved Today', value: stats?.resolvedToday ?? 0, accent: '#16a34a' },
@@ -130,7 +154,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Charts Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.5fr', gap: 24, marginBottom: 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 24 }}>
             {/* Severity Pie Chart */}
             <div className="card">
               <h3 className="card-title">Severity Distribution</h3>
@@ -183,7 +207,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, marginBottom: 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 24 }}>
             {/* AI Insight Card */}
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -193,7 +217,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
               {insight ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ padding: '12px', background: 'var(--color-gray-50)', borderRadius: 8 }}>
                     <div style={{ fontSize: 11, color: 'var(--color-gray-500)' }}>Top Issue</div>
                     <div style={{ fontWeight: 600, marginTop: 2 }}>{insight.topIssue}</div>
@@ -315,9 +339,34 @@ export default function AdminDashboard() {
                           ))}
                         </select>
                       </td>
-                      <td style={{ display: 'flex', gap: '8px' }}>
-                        {c.imageUrl ? <img src={c.imageUrl} alt="Before" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} title="Before" /> : '—'}
-                        {c.resolvedImageUrl ? <img src={c.resolvedImageUrl} alt="After" style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', border: '2px solid var(--color-primary)' }} title="After" /> : null}
+                      <td style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', maxWidth: '140px' }}>
+                        {c.imageUrl ? (
+                          <img 
+                            src={c.imageUrl} 
+                            alt="Before" 
+                            onClick={() => setActiveComparison({ before: c.imageUrl, after: c.resolvedImageUrl, landmark: c.landmarkImageUrl })}
+                            style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', cursor: 'pointer' }} 
+                            title="Before" 
+                          />
+                        ) : '—'}
+                        {c.landmarkImageUrl ? (
+                          <img 
+                            src={c.landmarkImageUrl} 
+                            alt="Landmark" 
+                            onClick={() => setActiveComparison({ before: c.imageUrl, after: c.resolvedImageUrl, landmark: c.landmarkImageUrl })}
+                            style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', border: '2px solid var(--color-primary-light)', cursor: 'pointer' }} 
+                            title="Landmark" 
+                          />
+                        ) : null}
+                        {c.resolvedImageUrl ? (
+                          <img 
+                            src={c.resolvedImageUrl} 
+                            alt="After" 
+                            onClick={() => setActiveComparison({ before: c.imageUrl, after: c.resolvedImageUrl, landmark: c.landmarkImageUrl })}
+                            style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover', border: '2px solid var(--color-primary)', cursor: 'pointer' }} 
+                            title="After" 
+                          />
+                        ) : null}
                       </td>
                       <td style={{ fontSize: 11, color: 'var(--color-gray-400)' }}>{timeAgo(c.createdAt)}</td>
                     </tr>
@@ -329,7 +378,127 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
+
+          {/* Local Drives Table */}
+          <div className="card" style={{ marginTop: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 className="card-title">Local Drives Management</h3>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowDriveModal(true)}>+ Create Drive</button>
+            </div>
+            <div className="table-wrapper">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Drive</th>
+                    <th>Date</th>
+                    <th>City/Ward</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Participants</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {drives.map(d => (
+                    <tr key={d.id}>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{d.title}</div>
+                      </td>
+                      <td>{formatDateTime(d.date)}</td>
+                      <td>{d.city} / {d.ward}</td>
+                      <td>{d.location}</td>
+                      <td><span className={`badge`} style={{ background: d.status === 'COMPLETED' ? 'var(--color-primary-100)' : 'var(--color-gray-100)', color: d.status === 'COMPLETED' ? 'var(--color-primary)' : 'var(--color-gray-700)' }}>{d.status}</span></td>
+                      <td>{d._count?.participants || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {drives.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '32px', color: 'var(--color-gray-400)' }}>No active drives</div>
+              )}
+            </div>
+          </div>
       </div>
+
+      {/* Before / After Comparison Modal */}
+      {activeComparison && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 24 }} onClick={() => setActiveComparison(null)}>
+          <div style={{ backgroundColor: 'var(--color-surface)', padding: 24, borderRadius: 16, maxWidth: 800, width: '100%', display: 'flex', flexDirection: 'column', gap: 24 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>Photo Evidence</h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setActiveComparison(null)}>Close</button>
+            </div>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {activeComparison.before && (
+                <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 600, color: '#ef4444' }}>Before</span>
+                  <img src={activeComparison.before} alt="Before" style={{ width: '100%', maxHeight: 400, objectFit: 'contain', borderRadius: 8, border: '2px solid #ef4444' }} />
+                </div>
+              )}
+              {activeComparison.landmark && (
+                <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>Landmark Reference</span>
+                  <img src={activeComparison.landmark} alt="Landmark" style={{ width: '100%', maxHeight: 400, objectFit: 'contain', borderRadius: 8, border: '2px solid var(--color-primary)' }} />
+                </div>
+              )}
+              {activeComparison.after && (
+                <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 600, color: '#10b981' }}>After</span>
+                  <img src={activeComparison.after} alt="After" style={{ width: '100%', maxHeight: 400, objectFit: 'contain', borderRadius: 8, border: '2px solid #10b981' }} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Drive Modal */}
+      {showDriveModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }} onClick={() => setShowDriveModal(false)}>
+          <div className="card" style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: 16 }}>Create Local Drive</h3>
+            <form onSubmit={handleCreateDrive} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label className="form-label">Title</label>
+                <input required type="text" className="form-input" value={driveForm.title} onChange={e => setDriveForm(p => ({ ...p, title: e.target.value }))} placeholder="e.g., Sunday Lake Cleanup" />
+              </div>
+              <div>
+                <label className="form-label">Description</label>
+                <textarea required className="form-input" rows={3} value={driveForm.description} onChange={e => setDriveForm(p => ({ ...p, description: e.target.value }))} placeholder="Details about the drive..." />
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">City</label>
+                  <select required className="form-input" value={driveForm.city} onChange={e => setDriveForm(p => ({ ...p, city: e.target.value }))}>
+                    {CITIES.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">Ward</label>
+                  <input required type="text" className="form-input" value={driveForm.ward} onChange={e => setDriveForm(p => ({ ...p, ward: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <label className="form-label">Location (Address/Landmark)</label>
+                <input required type="text" className="form-input" value={driveForm.location} onChange={e => setDriveForm(p => ({ ...p, location: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">Date & Time</label>
+                <input required type="datetime-local" className="form-input" value={driveForm.date} onChange={e => setDriveForm(p => ({ ...p, date: e.target.value }))} />
+              </div>
+              <div>
+                <label className="form-label">Banner Image</label>
+                <input type="file" accept="image/*" className="form-input" onChange={e => setDriveForm(p => ({ ...p, image: e.target.files[0] }))} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowDriveModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmittingDrive}>
+                  {isSubmittingDrive ? 'Creating...' : 'Create Drive & Notify'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }

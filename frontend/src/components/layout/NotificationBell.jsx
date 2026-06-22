@@ -21,11 +21,13 @@ export default function NotificationBell() {
     socket.on('status_updated', (data) => addNotif('status_updated', data));
     socket.on('points_awarded', (data) => addNotif('points_awarded', data));
     socket.on('collection_assigned', (data) => addNotif('collection_assigned', data));
+    socket.on('new_drive', (data) => addNotif('new_drive', data));
 
     return () => {
       socket.off('status_updated');
       socket.off('points_awarded');
       socket.off('collection_assigned');
+      socket.off('new_drive');
     };
   }, [socket]);
 
@@ -38,6 +40,7 @@ export default function NotificationBell() {
     if (type === 'status_updated') return '🔄';
     if (type === 'points_awarded') return '⭐';
     if (type === 'collection_assigned') return '📦';
+    if (type === 'new_drive') return '📢';
     return '🔔';
   };
 
@@ -45,6 +48,7 @@ export default function NotificationBell() {
     if (type === 'status_updated') return `Complaint status → ${data.newStatus}`;
     if (type === 'points_awarded') return `+${data.points} pts earned! Total: ${data.newTotal}`;
     if (type === 'collection_assigned') return `Pickup assigned at ${data.address?.slice(0, 40)}`;
+    if (type === 'new_drive') return `New Local Drive: ${data.title}`;
     return 'New notification';
   };
 
@@ -53,7 +57,7 @@ export default function NotificationBell() {
       <button
         onClick={handleOpen}
         style={{
-          background: 'none', border: 'none', cursor: 'pointer',
+          border: 'none', cursor: 'pointer',
           width: 36, height: 36, borderRadius: 8,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 20, position: 'relative',

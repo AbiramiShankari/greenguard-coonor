@@ -4,7 +4,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true, // Send cookies with every request
   headers: { 'Content-Type': 'application/json' },
 });
@@ -27,7 +27,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
+        const res = await api.post('/auth/refresh', {}, { withCredentials: true });
         const newToken = res.data?.data?.accessToken;
         if (newToken) {
           localStorage.setItem('accessToken', newToken);

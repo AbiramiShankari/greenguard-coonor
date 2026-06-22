@@ -30,6 +30,7 @@ const iotRoutes = require('./src/routes/iot.routes');
 const routeRoutes = require('./src/routes/route.routes');
 const aiRoutes = require('./src/routes/aiRoutes');
 const driveRoutes = require('./src/routes/drive.routes');
+const cronRoutes = require('./src/routes/cron.routes');
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -107,6 +108,7 @@ app.use('/api/iot', iotRoutes);
 app.use('/api/routes', routeRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/drives', driveRoutes);
+app.use('/api/cron', cronRoutes);
 
 // ─── Health Check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
@@ -121,20 +123,27 @@ app.use((req, res) => {
 // ─── Global Error Handler ─────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error('[SERVER] Unhandled error:', err);
+  
+  if (err.name === 'PrismaClientInitializationError' || err.message.includes('Can\'t reach database server')) {
+    return res.status(503).json({ success: false, message: 'Database connection failed. Please try again later.' });
+  }
+
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 
-httpServer.listen(PORT, () => {
-  console.log(`\n🌿 GreenGuard API running on http://localhost:${PORT}`);
-  console.log(`🔌 Socket.io ready`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}\n`);
+if (!process.env.VERCEL) {
+  httpServer.listen(PORT, () => {
+    console.log(`\n🌿 GreenGuard API running on http://localhost:${PORT}`);
+    console.log(`🔌 Socket.io ready`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}\n`);
 
-  // Start cron jobs
-  scheduleDailySummary();
-  scheduleWeeklyInsight();
-});
+    // Start cron jobs locally
+    scheduleDailySummary();
+    scheduleWeeklyInsight();
+  });
+}
 
 module.exports = { app, httpServer };

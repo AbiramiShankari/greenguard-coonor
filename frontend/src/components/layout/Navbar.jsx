@@ -3,26 +3,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import NotificationBell from './NotificationBell';
 
-export default function Navbar({ title = 'GreenGuard', onMenuToggle }) {
+export default function Navbar({ title = 'GreenGuard' }) {
   const { user } = useAuth();
-  const { t, i18n } = useTranslation();
-
-  const toggleLanguage = () => {
-    const newLang = i18n.language === 'ta' ? 'en' : 'ta';
-    i18n.changeLanguage(newLang);
-  };
+  const { t } = useTranslation();
 
   return (
     <header className="app-header">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        {/* Mobile menu toggle */}
-        <button
-          onClick={onMenuToggle}
-          style={{ display: 'none', background: 'none', fontSize: 20, padding: 4 }}
-          className="mobile-menu-btn"
-        >
-          ☰
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ fontSize: '20px' }}>🌿</div>
         <h1 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-gray-900)' }}>{title}</h1>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -31,13 +19,6 @@ export default function Navbar({ title = 'GreenGuard', onMenuToggle }) {
             {user.city}
           </span>
         )}
-        <button 
-          onClick={toggleLanguage}
-          className="btn btn-ghost btn-sm"
-          style={{ padding: '4px 8px', fontSize: 12, border: '1px solid var(--color-gray-200)' }}
-        >
-          {t('toggle_lang')}
-        </button>
         <NotificationBell />
         <div style={{
           width: 32, height: 32, background: 'var(--color-primary)',

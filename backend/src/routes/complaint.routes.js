@@ -25,7 +25,7 @@ const updateStatusValidation = [
 // All routes require authentication
 router.use(authenticate);
 
-router.post('/', authorize('CITIZEN'), upload.single('image'), handleUploadError, createComplaintValidation, createComplaint);
+router.post('/', authorize('CITIZEN'), upload.fields([{ name: 'image', maxCount: 1 }, { name: 'landmarkImage', maxCount: 1 }]), handleUploadError, createComplaintValidation, createComplaint);
 router.get('/', getComplaints);
 router.get('/nearby', getNearbyComplaints);
 router.get('/:id', getComplaintById);

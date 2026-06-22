@@ -96,7 +96,7 @@ export default function MapView() {
                 </select>
                 <select className="form-input" value={filters.category} onChange={e => setFilters(p => ({ ...p, category: e.target.value }))}>
                   <option value="">All Categories</option>
-                  {['overflow', 'illegal_dumping', 'drainage', 'litter', 'other'].map(c => <option key={c}>{c}</option>)}
+                  {['overflow', 'waste_dumping', 'drainage', 'litter', 'other'].map(c => <option key={c}>{c}</option>)}
                 </select>
               </>}
             </div>
