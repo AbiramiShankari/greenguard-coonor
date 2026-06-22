@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/**/*": {
+      "includeFiles": "{backend/node_modules/.prisma/client/*.so.node,backend/prisma/schema.prisma}"
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",
