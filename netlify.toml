@@ -1,6 +1,7 @@
 [build]
   command = "npm run build"
   publish = "frontend/dist"
+  functions = "netlify/functions"
 
 [functions]
   included_files = ["node_modules/.prisma/client/*.so.node", "backend/prisma/schema.prisma", "backend/node_modules/.prisma/client/*.so.node"]

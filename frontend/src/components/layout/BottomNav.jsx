@@ -20,6 +20,7 @@ const citizenNav = [
 
 const collectorNav = [
   { to: '/collector', icon: '📦', labelKey: 'nav_collections', end: true },
+  { to: '/store', icon: '🎁', labelKey: 'nav_store' },
   { to: '/map', icon: '🗺️', labelKey: 'nav_map' },
   { to: '/profile', icon: '👤', labelKey: 'Profile' },
 ];
